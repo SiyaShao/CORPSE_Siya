@@ -1,3 +1,5 @@
+#This is for the new branch "Add-new-mycorrhizal-types-2022/01/03"
+
 expected_params={	'vmaxref': 'Relative maximum enzymatic decomp rates (length 3)',
         	'Ea':	'Activation energy (length 3)',
         	'kC':	'Michaelis-Menton parameter (length 3)',
