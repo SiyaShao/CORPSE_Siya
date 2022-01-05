@@ -75,10 +75,16 @@ litter_CN_AM = 30
 litter_CN_ECM= 50
 litter_CN_site      = litter_CN_ECM*ECM_pct/100 + litter_CN_AM*(1-ECM_pct/100)
 total_inputs = 0.5 # kgC/m2
+
+myc_ratio_NPP = 0.2 # Ratio of C transferred to mycorrhizal fungi to NPP
+myc_ratio_litter = myc_ratio_NPP/(1-myc_ratio_NPP) # Ratio of C transferred to mycorrhizal fungi to litter production
+
 inputs={'uFastC':total_inputs*fastfrac_site,
         'uSlowC':total_inputs*(1-fastfrac_site),
         'uFastN':total_inputs*fastfrac_site/litter_CN_site,
-        'uSlowN':total_inputs*(1-fastfrac_site)/litter_CN_site} # gC/year. Can contain any model pools.
+        'uSlowN':total_inputs*(1-fastfrac_site)/litter_CN_site,
+        'ECMC':total_inputs*myc_ratio_litter*ECM_pct/100,
+        'AMC':total_inputs*myc_ratio_litter*(1-ECM_pct/100)} # gC/year. Can contain any model pools.
 
 
 theta=0.5   # fraction of saturation
@@ -93,6 +99,11 @@ protC=numpy.zeros((nplots,nclays,nclimates))
 protN=numpy.zeros((nplots,nclays,nclimates))
 unprotC=numpy.zeros((nplots,nclays,nclimates))
 unprotN=numpy.zeros((nplots,nclays,nclimates))
+
+timesteps=100 # According to what is set for times in the above lines (numpy.arrange)
+ECMC = numpy.zeros((timesteps,nplots,nclays,nclimates))
+AMC  = numpy.zeros((timesteps,nplots,nclays,nclimates)) # Document the mycorrhizal changes with time
+
 n=0
 from CORPSE_deriv import sumCtypes
 for plotnum in range(nplots):
@@ -105,6 +116,11 @@ for plotnum in range(nplots):
             protN[plotnum,claynum,climnum]=sumCtypes(result.iloc[-1],'p','N')
             unprotC[plotnum,claynum,climnum]=sumCtypes(result.iloc[-1],'u')
             unprotN[plotnum,claynum,climnum]=sumCtypes(result.iloc[-1],'u','N')
+            for timenum in range(timesteps):
+                ECMCarray = result['ECMC']
+                AMCarray = result['AMC']
+                ECMC[timenum,plotnum,claynum,climnum] = ECMCarray[timenum]
+                AMC[timenum,plotnum,claynum,climnum] = AMCarray[timenum]
             n+=1
 
 # Plot the results
@@ -118,6 +134,17 @@ def totalCarbon(SOM):
 def totalNitrogen(SOM):
     from CORPSE_deriv import sumCtypes
     return sumCtypes(SOM,'u','N')+sumCtypes(SOM,'p','N')+SOM['SAPN']
+
+plt.figure('Mycorrhizal C&N for one sim',figsize=(4,5.3));plt.clf()
+
+plt.subplot(211)
+plt.plot(times,ECMC[:,10,1,2],label='ECMC') # %ECM 47.4%, %clay 10.0, %MAT 12.5
+plt.plot(times,AMC[:,10,1,2],label='AMC')
+
+plt.xlabel('Time (days)')
+plt.ylabel('Mycorrhizal carbon')
+plt.title('Mycorrhizal C')
+plt.legend(fontsize='small')
 
 
 plt.figure('C and N for one sim',figsize=(4,5.3));plt.clf()
