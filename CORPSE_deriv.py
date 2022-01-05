@@ -1,4 +1,4 @@
-#This is for the new branch "Add-new-mycorrhizal-types-2022/01/03"
+#This is for the new branch "Add-new-mycorrhizal-types"
 
 expected_params={	'vmaxref': 'Relative maximum enzymatic decomp rates (length 3)',
         	'Ea':	'Activation energy (length 3)',
@@ -21,12 +21,18 @@ expected_params={	'vmaxref': 'Relative maximum enzymatic decomp rates (length 3)
 
 chem_types = ['Fast','Slow','Necro']
 
+# This sets up three types of microbes: one is free-living saprotrophs, the other two are ECM and AM mycorrhizal fungi
+mic_types = ['SAP','ECM','AM']
+
 # This sets up pools like "uFastC" for unprotected fast C and "pNecroN" for protected necromass N
 expected_pools = ['u'+t+'C' for t in chem_types]+\
                  ['p'+t+'C' for t in chem_types]+\
                  ['u'+t+'N' for t in chem_types]+\
                  ['p'+t+'N' for t in chem_types]+\
-                 ['livingMicrobeC','livingMicrobeN','CO2','inorganicN']
+                 [mt+'C' for mt in mic_types]   +\
+                 [mt+'N' for mt in mic_types]   +\
+                 ['CO2','inorganicN']
+#                 ['livingMicrobeC','livingMicrobeN','CO2','inorganicN',]
 
 
 #All soils: slope=0.4833,intercept=2.3282
