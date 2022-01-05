@@ -92,7 +92,7 @@ def CORPSE_deriv(SOM,T,theta,params,claymod=1.0):
     decomp=decompRate(SOM,T,theta,params)
 
     # Microbial turnover
-    microbeTurnover=atleast_1d((SOM['livingMicrobeC']-params['minMicrobeC']*(sumCtypes(SOM,'u')))/params['Tmic']);   # kg/m2/yr
+    microbeTurnover=atleast_1d((SOM['SAPC']-params['minMicrobeC']*(sumCtypes(SOM,'u')))/params['Tmic']);   # kg/m2/yr
     if isinstance(microbeTurnover,float):
         microbeTurnover=max(0.0,microbeTurnover)
     else:
@@ -153,8 +153,8 @@ def CORPSE_deriv(SOM,T,theta,params,claymod=1.0):
     derivs=SOM.copy()
     for k in derivs.keys():
         derivs[k]=0.0
-    derivs['livingMicrobeC']=dmicrobeC
-    derivs['livingMicrobeN']=dmicrobeN
+    derivs['SAPC']=dmicrobeC
+    derivs['SAPN']=dmicrobeN
     derivs['CO2']=CO2prod
     derivs['inorganicN']=CN_imbalance_term
     for t in chem_types:
@@ -173,6 +173,12 @@ def CORPSE_deriv(SOM,T,theta,params,claymod=1.0):
     derivs['uNecroN']=derivs['uNecroN']+deadmic_N_production-turnover_N_min-turnover_N_slow
     derivs['uSlowN']+=turnover_N_slow
     derivs['inorganicN']+=turnover_N_min
+
+    derivs['ECMC']=[0.0]
+    derivs['AMC']=[0.0]
+    derivs['ECMN']=[0.0]
+    derivs['AMN']=[0.0]
+
     return derivs
 
 
@@ -190,10 +196,10 @@ def decompRate(SOM,T,theta,params):
     vmax=Vmax(T,params)
 
     decompRate={}
-    dodecomp=atleast_1d((sumCtypes(SOM,'u')!=0.0)&(theta!=0.0)&(SOM['livingMicrobeC']!=0.0))
+    dodecomp=atleast_1d((sumCtypes(SOM,'u')!=0.0)&(theta!=0.0)&(SOM['SAPC']!=0.0))
     for t in chem_types:
         if dodecomp.any():
-            drate=where(dodecomp,vmax[t]*theta**params['substrate_diffusion_exp']*(SOM['u'+t+'C'])*SOM['livingMicrobeC']/(sumCtypes(SOM,'u')*params['kC'][t]+SOM['livingMicrobeC'])*(1.0-theta)**params['gas_diffusion_exp']/aerobic_max,0.0)
+            drate=where(dodecomp,vmax[t]*theta**params['substrate_diffusion_exp']*(SOM['u'+t+'C'])*SOM['SAPC']/(sumCtypes(SOM,'u')*params['kC'][t]+SOM['SAPC'])*(1.0-theta)**params['gas_diffusion_exp']/aerobic_max,0.0)
         decompRate[t+'C']=drate
         decompRate[t+'N']=where(SOM['u'+t+'C']>0,drate*SOM['u'+t+'N']/SOM['u'+t+'C'],0.0)
 

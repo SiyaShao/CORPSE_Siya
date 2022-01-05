@@ -51,7 +51,7 @@ def run_CORPSE_ODE(T,theta,inputs,clay,initvals,params,times):
     # t0=time.time()
     from scipy.integrate import odeint
 
-    if not isinstance(initvals['livingMicrobeC'],float) and len(initvals['livingMicrobeC'])==2:
+    if not isinstance(initvals['SAPC'],float) and len(initvals['SAPC'])==2:
         # With isotope label, concatenate one after the other, put back together later
         ivals=[initvals[f][0] for f in fields]+[initvals[f][1] for f in fields]
     else:
@@ -62,7 +62,7 @@ def run_CORPSE_ODE(T,theta,inputs,clay,initvals,params,times):
         args=(T+273.15,theta,inputs,clay,params))
 
     # Store the output in a pandas DataFrame (similar to R's dataframes)
-    if not isinstance(initvals['livingMicrobeC'],float) and len(initvals['livingMicrobeC'])==2:
+    if not isinstance(initvals['SAPC'],float) and len(initvals['SAPC'])==2:
         result_unlabeled=pandas.DataFrame(result[:,:len(fields)],columns=fields)
         result_labeled=pandas.DataFrame(result[:,len(fields):],columns=fields)
         return result_unlabeled,result_labeled
@@ -97,8 +97,8 @@ def run_CORPSE_iterator(T,theta,inputs,clay,initvals,params,times):
         else:
             SOM[field]=initvals[field]
     
-    SOM['livingMicrobeN']=SOM['livingMicrobeC']/params['CN_microbe']
-    SOM_out['livingMicrobeN']=zeros((npoints,nrecords))
+    SOM['SAPN']=SOM['SAPC']/params['CN_microbe']
+    SOM_out['SAPN']=zeros((npoints,nrecords))
 
     # Iterate through simulations
     for step in range(nsteps):
@@ -151,14 +151,14 @@ if __name__ == '__main__':
         'pFastC':0.1,
         'pSlowC':0.1,
         'pNecroC':10.0,
-        'livingMicrobeC':0.01,
+        'SAPC':0.01,
         'uFastN':0.1e-1,
         'uSlowN':20.0e-1,
         'uNecroN':0.1e-1,
         'pFastN':10.0e-1,
         'pSlowN':0.1e-1,
         'pNecroN':10.0e-1,
-        # 'livingMicrobeN':0.01/8.0,
+        # 'SAPN':0.01/8.0,
         'inorganicN':0.1,
         'CO2':0.0}
 
@@ -188,7 +188,7 @@ if __name__ == '__main__':
         'iN_loss_rate':10.0, # Loss rate from inorganic N pool (year-1). >1 since it takes much less than a year for it to be removed
         'Ohorizon_transfer_rates':{'uFastC':0.1,'uSlowC':0.1,'uNecroC':0.1,'uFastN':0.1,'uSlowN':0.1,'uNecroN':0.1}
     }
-    SOM_init['livingMicrobeN']=SOM_init['livingMicrobeC']/params['CN_microbe']
+    SOM_init['SAPN']=SOM_init['SAPC']/params['CN_microbe']
 
     times=numpy.linspace(0,10,365*10) # Units of years. 10 years at daily time step
     T=numpy.zeros(len(times))+20
@@ -229,13 +229,13 @@ if __name__ == '__main__':
     a[1,0].set(title='Slower N pools',xlabel='Time (years)',ylabel='N stock (kg m$^{-2}$)')
 
     a[0,1].plot(times,results_iterator['uFastC'].squeeze(),'b-',label='Fast')
-    a[0,1].plot(times,results_iterator['livingMicrobeC'].squeeze(),'g-',label='Live microbe')
+    a[0,1].plot(times,results_iterator['SAPC'].squeeze(),'g-',label='Live microbe')
     a[0,1].plot(times,results_iterator['uNecroC'].squeeze(),'m-',label='Necromass')
     a[0,1].set(title='Faster C pools',xlabel='Time (years)',ylabel='C stock (kg m$^{-2}$)')
     a[0,1].legend()
 
     a[1,1].plot(times,results_iterator['uFastN'].squeeze(),'b-',label='Fast')
-    a[1,1].plot(times,results_iterator['livingMicrobeN'].squeeze(),'g-',label='Live microbe')
+    a[1,1].plot(times,results_iterator['SAPN'].squeeze(),'g-',label='Live microbe')
     a[1,1].plot(times,results_iterator['uNecroN'].squeeze(),'m-',label='Necromass')
     a[1,1].set(title='Faster N pools',xlabel='Time (years)',ylabel='N stock (kg m$^{-2}$)')
 

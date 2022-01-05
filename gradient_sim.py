@@ -15,16 +15,20 @@ SOM_init={'uFastC':0.1,
      'pFastC':0.1,
      'pSlowC':0.1,
      'pNecroC':10.0,
-     'livingMicrobeC':0.01,
+     'SAPC':0.01,
      'uFastN':0.1e-1,
       'uSlowN':20.0e-1,
       'uNecroN':0.1e-1,
       'pFastN':10.0e-1,
       'pSlowN':0.1e-1,
       'pNecroN':10.0e-1,
-      # 'livingMicrobeN':0.01/8.0,
+      # 'SAPN':0.01/8.0,
       'inorganicN':0.1,
-     'CO2':0.0}
+      'CO2':0.0,
+      'ECMC':0.0,
+      'AMC':0.0,
+      'ECMN':0.0,
+      'AMN':0.0}
 
 
 # Set model parameters
@@ -52,7 +56,7 @@ params={
     'iN_loss_rate':10.0, # Loss rate from inorganic N pool (year-1). >1 since it takes much less than a year for it to be removed
     'Ohorizon_transfer_rates':{'uFastC':0.1,'uSlowC':0.1,'uNecroC':0.1,'uFastN':0.1,'uSlowN':0.1,'uNecroN':0.1}
 }
-SOM_init['livingMicrobeN']=SOM_init['livingMicrobeC']/params['CN_microbe']
+SOM_init['SAPN']=SOM_init['SAPC']/params['CN_microbe']
 
 # ECM gradient plots
 nplots=20
@@ -108,12 +112,12 @@ import matplotlib.pyplot as plt
 
 def totalCarbon(SOM):
     from CORPSE_deriv import sumCtypes
-    return sumCtypes(SOM,'u')+sumCtypes(SOM,'p')+SOM['livingMicrobeC']
+    return sumCtypes(SOM,'u')+sumCtypes(SOM,'p')+SOM['SAPC']
 
 
 def totalNitrogen(SOM):
     from CORPSE_deriv import sumCtypes
-    return sumCtypes(SOM,'u','N')+sumCtypes(SOM,'p','N')+SOM['livingMicrobeN']
+    return sumCtypes(SOM,'u','N')+sumCtypes(SOM,'p','N')+SOM['SAPN']
 
 
 plt.figure('C and N for one sim',figsize=(4,5.3));plt.clf()
