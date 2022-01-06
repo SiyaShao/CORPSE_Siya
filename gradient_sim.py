@@ -119,7 +119,13 @@ for plotnum in range(nplots):
                 'Sim {simnum:d} of {totsims:d}. %ECM = {ecmpct:1.1f}, %clay = {claypct:1.1f}, MAT = {mat:1.1f}'.format(
                     simnum=n, totsims=nplots * nclays * nclimates, ecmpct=ECM_pct[plotnum], claypct=clay[claynum],
                     mat=MAT[climnum]))
-            result = CORPSE_integrate.run_CORPSE_ODE(T=MAT[climnum], theta=theta,
+
+            litter_CN_site = litter_CN_ECM*ECM_pct[plotnum]/100 + litter_CN_AM*(1-ECM_pct[plotnum]/100)
+            Ndemand = total_inputs*fastfrac_site[plotnum]/litter_CN_site + total_inputs*(1-fastfrac_site[plotnum])/litter_CN_site
+            # Calculate plant Ndemand from N in litter production (assuming plant N_litter balances plant N_uptake)
+            # This will not be needed once the model is coupled with a plant model
+
+            result = CORPSE_integrate.run_CORPSE_ODE(T=MAT[climnum], theta=theta, Ndemand=Ndemand,
                                                      inputs=dict([(k, inputs[k][plotnum]) for k in inputs]),
                                                      clay=clay[claynum], initvals=SOM_init, params=params, times=times)
             protC[plotnum, claynum, climnum] = sumCtypes(result.iloc[-1], 'p')

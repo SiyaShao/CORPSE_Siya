@@ -69,7 +69,7 @@ def check_params(params):
 
 
 from numpy import zeros,size,where,atleast_1d,zeros_like
-def CORPSE_deriv(SOM,T,theta,params,claymod=1.0):
+def CORPSE_deriv(SOM,T,theta,Ndemand,params,claymod=1.0):
     '''Calculate rates of change for all CORPSE pools
        T: Temperature (K)
        theta: Soil water content (fraction of saturation)
