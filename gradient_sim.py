@@ -53,6 +53,13 @@ params = {
     'max_immobilization_rate': 3.65,
     'substrate_diffusion_exp': 1.5,
     'new_resp_units': True,
+    'max_mining_rate': {'Fast': 2.0, 'Slow': 1.0, 'Necro': 6.0},
+    # assumed to be more efficient with Slow and Necro pools, and less efficient with fast pools, compared to SAPs
+    'kc_mining': 0.015, # g microbial biomass C/g substrate C, Sulman et al., (2019)
+    'max_scavenging_rate': 0.2, # kgN/m2/year, Sulman et al., (2019)
+    'kc_scavenging': 0.3, # kgC/m3, Sulman et al., (2019)
+    'kc_scavenging_IN': 0.001, # kgN/m3, Sulman et al., (2019)
+    'depth': 0.1, # 10cm, assumed for now.
     'iN_loss_rate': 10.0,
     # Loss rate from inorganic N pool (year-1). >1 since it takes much less than a year for it to be removed
     'Ohorizon_transfer_rates': {'uFastC': 0.1, 'uSlowC': 0.1, 'uNecroC': 0.1, 'uFastN': 0.1, 'uSlowN': 0.1,
@@ -85,12 +92,9 @@ myc_ratio_litter = myc_ratio_NPP / (
 inputs = {'uFastC': total_inputs * fastfrac_site,
           'uSlowC': total_inputs * (1 - fastfrac_site),
           'uFastN': total_inputs * fastfrac_site / litter_CN_site,
-          'uSlowN': total_inputs * (1 - fastfrac_site) / litter_CN_site,
-          'ECMC': total_inputs * myc_ratio_litter * ECM_pct / 100 * params['et']['ECM'],
-          'AMC': total_inputs * myc_ratio_litter * (1 - ECM_pct / 100) * params['et']['AM']}
-# Use mycorrhizal CUE to calculate mycorrhizal growth
-# gC/year. Can contain any model pools.
+          'uSlowN': total_inputs * (1 - fastfrac_site) / litter_CN_site}# gC/year. Can contain any model pools.
 
+Ctransfer = {'ECM':0.0,'AM':0.0} # Initialize C tranfer from plants to symbiont fungi
 
 theta = 0.5  # fraction of saturation
 
@@ -122,10 +126,14 @@ for plotnum in range(nplots):
 
             litter_CN_site = litter_CN_ECM*ECM_pct[plotnum]/100 + litter_CN_AM*(1-ECM_pct[plotnum]/100)
             Ndemand = total_inputs*fastfrac_site[plotnum]/litter_CN_site + total_inputs*(1-fastfrac_site[plotnum])/litter_CN_site
-            # Calculate plant Ndemand from N in litter production (assuming plant N_litter balances plant N_uptake)
+            # Calculate plant Ndemand from N in litter production
+            # Assuming plant N_litter balances plant N_uptake and plant not relying on roots
             # This will not be needed once the model is coupled with a plant model
 
-            result = CORPSE_integrate.run_CORPSE_ODE(T=MAT[climnum], theta=theta, Ndemand=Ndemand,
+            Ctransfer['ECM'] = total_inputs * myc_ratio_litter * ECM_pct[plotnum] / 100
+            Ctransfer['AM'] = total_inputs * myc_ratio_litter * (1-ECM_pct[plotnum] / 100)
+
+            result = CORPSE_integrate.run_CORPSE_ODE(T=MAT[climnum], theta=theta, Ndemand=Ndemand,Ctransfer=Ctransfer,
                                                      inputs=dict([(k, inputs[k][plotnum]) for k in inputs]),
                                                      clay=clay[claynum], initvals=SOM_init, params=params, times=times)
             protC[plotnum, claynum, climnum] = sumCtypes(result.iloc[-1], 'p')

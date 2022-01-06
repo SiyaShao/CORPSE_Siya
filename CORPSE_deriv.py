@@ -15,8 +15,14 @@ expected_params={	'vmaxref': 'Relative maximum enzymatic decomp rates (length 3)
             'CN_microbe': 'C:N ratio of microbial biomass (length 3)',
             'frac_N_turnover_min': 'Fraction of microbial biomass N turnover that is mineralized',
             'frac_turnover_slow': 'Fraction of microbial biomass N turnover that goes to slow pool',
-            'max_immobilization_rate': 'Maximum N immobilization rate (fraction per day)',
-            'new_resp_units':'If true, vmaxref has units of 1/years and assumes optimal soil moisture has a relative rate of 1.0'
+            'max_immobilization_rate': 'Maximum N immobilization rate (fraction per day) (length 3)',
+            'new_resp_units':'If true, vmaxref has units of 1/years and assumes optimal soil moisture has a relative rate of 1.0',
+            'max_mining_rate': 'Maximum N mining rates from unprotected soil organic N pools (ECM fungi) (length 3)',
+            'kc_mining': 'Half-saturation constant of ECM biomass concentration for ECM N mining',
+            'max_scavenging_rate':'Maximum N scavenging rates from soil inorganic N pools (AM fungi)',
+            'kc_scavenging': 'Half-saturation constant of AM biomass concentration for AM N scavenging',
+            'kc_scavenging_IN': 'Half-saturation constant of inorganic N concentration for AM N scavenging',
+            'depth': 'Soil depth'
             }
 
 chem_types = ['Fast','Slow','Necro']
@@ -69,7 +75,7 @@ def check_params(params):
 
 
 from numpy import zeros,size,where,atleast_1d,zeros_like
-def CORPSE_deriv(SOM,T,theta,Ndemand,params,claymod=1.0):
+def CORPSE_deriv(SOM,T,theta,Ndemand,Ctransfer,params,claymod=1.0):
     '''Calculate rates of change for all CORPSE pools
        T: Temperature (K)
        theta: Soil water content (fraction of saturation)
@@ -104,6 +110,13 @@ def CORPSE_deriv(SOM,T,theta,Ndemand,params,claymod=1.0):
     CN_imbalance_term = {'SAP':0.0,'ECM':0.0,'AM':0.0}
     # Separate microbial metabolisms among different microbial types
 
+    Nacq_simb = {'ECM':0.0,'AM':0.0}
+    Nacq_simb_max = {'ECM':0.0,'AM':0.0}
+    Nacq_simb_max['ECM'] = 0.0
+    Nacq_simb_max['AM'] = params['max_scavenging_rate'] * SOM['inorganicN']/(SOM['inorganicN']+params['kc_scavenging_IN']*params['depth']) \
+                     * SOM['AMC']/(SOM['AMC']+params['kc_scavenging']*params['depth'])
+    # Calculate potential ECM N mining and AM N scavenging
+
     for mt in mic_types:
         microbeTurnover[mt]=(SOM[mt+'C']-params['minMicrobeC']*(sumCtypes(SOM,'u')))/params['Tmic'][mt];   # kg/m2/yr
         if isinstance(microbeTurnover[mt],float):
@@ -118,32 +131,40 @@ def CORPSE_deriv(SOM,T,theta,Ndemand,params,claymod=1.0):
         # Note that we haven't set up mycorrhizal N cycle yet thus we only consider SAP CN interaction for now.
 
         # C and N available for microbial growth
-        if mt==['SAP']:
+        if mt=='ECM':
+           carbon_supply[mt] += Ctransfer[mt]*et[mt]
+           nitrogen_supply[mt] += Nacq_simb_max[mt]
+           maintenance_resp[mt] += Ctransfer[mt]*(1-et[mt])
+
+        if mt=='SAP':
            for t in chem_types:
                carbon_supply[mt]=carbon_supply[mt]+decomp[t+'C']*params['eup'][t]
                nitrogen_supply[mt]=nitrogen_supply[mt]+decomp[t+'N']*params['nup'][t]
 
            IMM_N_max=atleast_1d(params['max_immobilization_rate']*365*SOM['inorganicN']/(SOM['inorganicN']+params['max_immobilization_rate']))
+           if mt!='SAP':
+              IMM_N_max=atleast_1d(0.0)
 
            # Growth is nitrogen limited, with not enough mineral N to support it with max immobilization
            # loc_Nlim is a vector of True/False that tells the code where this condition applies
-           loc_Nlim=(carbon_supply[mt] - maintenance_resp[mt])>((nitrogen_supply[mt]+IMM_N_max)*params['CN_microbe'][mt])
-           CN_imbalance_term[mt][loc_Nlim] = -IMM_N_max[loc_Nlim]
-           dmicrobeC[mt][loc_Nlim] =  ((nitrogen_supply[mt][loc_Nlim]+IMM_N_max[loc_Nlim])*params['CN_microbe'][mt] - microbeTurnover[mt][loc_Nlim]*et)
-           dmicrobeN[mt][loc_Nlim] = (nitrogen_supply[mt][loc_Nlim]+IMM_N_max[loc_Nlim] - microbeTurnover[mt][loc_Nlim]*et/params['CN_microbe'][mt])
-           overflow_resp[mt][loc_Nlim]=carbon_supply[mt][loc_Nlim]-maintenance_resp[mt][loc_Nlim] - (nitrogen_supply[mt][loc_Nlim]+IMM_N_max[loc_Nlim])*params['CN_microbe'][mt];
+           loc_Nlim=int((carbon_supply[mt] - maintenance_resp[mt])>((nitrogen_supply[mt]+IMM_N_max)*params['CN_microbe'][mt]))
+           CN_imbalance_term[mt] = -IMM_N_max*loc_Nlim
+           dmicrobeC[mt] = ((nitrogen_supply[mt]+IMM_N_max)*params['CN_microbe'][mt] - microbeTurnover[mt]*et[mt])*loc_Nlim
+           dmicrobeN[mt] = (nitrogen_supply[mt]+IMM_N_max - microbeTurnover[mt]*et[mt]/params['CN_microbe'][mt])*loc_Nlim
+           overflow_resp[mt] = (carbon_supply[mt]-maintenance_resp[mt] - (nitrogen_supply[mt]+IMM_N_max)*params['CN_microbe'][mt])*loc_Nlim;
 
            # Growth must be supported by immobilization of some mineral nitrogen, but is ultimately carbon limited
            loc_immob=(carbon_supply[mt] - maintenance_resp[mt] >= nitrogen_supply[mt]*params['CN_microbe'][mt]) & (carbon_supply[mt] - maintenance_resp[mt] < (nitrogen_supply[mt]+IMM_N_max)*params['CN_microbe'][mt])
-           CN_imbalance_term[mt][loc_immob] = -((carbon_supply[mt][loc_immob]-maintenance_resp[mt][loc_immob])/params['CN_microbe'][mt] - nitrogen_supply[mt][loc_immob])
-           dmicrobeC[mt][loc_immob] = (carbon_supply[mt][loc_immob] - microbeTurnover[mt][loc_immob])
-           dmicrobeN[mt][loc_immob] = ((carbon_supply[mt][loc_immob]-maintenance_resp[mt][loc_immob])/params['CN_microbe'][mt] - microbeTurnover[mt][loc_immob]*et/params['CN_microbe'][mt])
+           loc_immob=int(loc_immob)
+           CN_imbalance_term[mt] = -((carbon_supply[mt]-maintenance_resp[mt])/params['CN_microbe'][mt] - nitrogen_supply[mt])*loc_immob
+           dmicrobeC[mt] = (carbon_supply[mt] - microbeTurnover[mt])*loc_immob
+           dmicrobeN[mt] = ((carbon_supply[mt]-maintenance_resp[mt])/params['CN_microbe'][mt] - microbeTurnover[mt]*et[mt]/params['CN_microbe'][mt])*loc_immob
 
            # Growth is carbon limited and extra N is mineralized
-           loc_Clim=~(loc_Nlim | loc_immob)
-           dmicrobeC[mt][loc_Clim]=(carbon_supply[mt][loc_Clim] - microbeTurnover[mt][loc_Clim]) ;
-           dmicrobeN[mt][loc_Clim]=((carbon_supply[mt][loc_Clim]-maintenance_resp[mt][loc_Clim])/params['CN_microbe'][mt] - microbeTurnover[mt][loc_Clim]*params['et']/params['CN_microbe'][mt])
-           CN_imbalance_term[mt][loc_Clim] = nitrogen_supply[mt][loc_Clim] - (carbon_supply[mt][loc_Clim]-maintenance_resp[mt][loc_Clim])/params['CN_microbe'][mt];
+           loc_Clim=1-int(loc_Nlim*loc_immob)
+           dmicrobeC[mt]=(carbon_supply[mt] - microbeTurnover[mt])*loc_Clim;
+           dmicrobeN[mt]=((carbon_supply[mt]-maintenance_resp[mt])/params['CN_microbe'][mt] - microbeTurnover[mt]*et[mt]/params['CN_microbe'][mt])*loc_Clim
+           CN_imbalance_term[mt]= nitrogen_supply[mt] - (carbon_supply[mt]-maintenance_resp[mt])/params['CN_microbe'][mt]*loc_Clim;
 
     # CO2 production and cumulative CO2 produced by cohort
     CO2prod = sum(maintenance_resp.values()) + sum(overflow_resp.values()) # Sum up all the CO2 production from different microbial groups
@@ -165,9 +186,9 @@ def CORPSE_deriv(SOM,T,theta,Ndemand,params,claymod=1.0):
     derivs['SAPC']=atleast_1d(dmicrobeC['SAP'])
     derivs['SAPN']=atleast_1d(dmicrobeN['SAP']) # Will change to "for mt in mic_types" later on for mycorrhizal fungi
     derivs['CO2'] =atleast_1d(CO2prod)
+    derivs['inorganicN'] += CN_imbalance_term['SAP']
 
     for mt in mic_types:
-        derivs['inorganicN'] += CN_imbalance_term[mt]
         for t in chem_types:
             derivs['inorganicN'] += decomp[t+'N']*(1-params['nup'][t])
 
