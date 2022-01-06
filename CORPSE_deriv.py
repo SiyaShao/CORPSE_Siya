@@ -7,7 +7,7 @@ expected_params={	'vmaxref': 'Relative maximum enzymatic decomp rates (length 3)
             'substrate_diffusion_exp':'Determines suppression of decomp at low soil moisture',
         	'minMicrobeC':	   'Minimum microbial biomass (fraction of total C)',
         	'Tmic': 'Microbial lifetime at 20C (years) (length 3)',
-        	'et':		  'Fraction of turnover not converted to CO2',
+        	'et': 'Fraction of turnover not converted to CO2 (length 3)',
         	'eup': 'Carbon uptake efficiency (length 3)',
             'nup': 'Nitrogen uptake efficiency (length 3)',
         	'tProtected':	'Protected C turnover time (years)',
@@ -111,10 +111,10 @@ def CORPSE_deriv(SOM,T,theta,params,claymod=1.0):
         else:
            microbeTurnover[mt][microbeTurnover[mt]<0.0]=0.0
 
-        maintenance_resp[mt]=microbeTurnover[mt]*(1.0-et)
+        maintenance_resp[mt]=microbeTurnover[mt]*(1.0-et[mt])
 
-        deadmic_C_production[mt]=microbeTurnover[mt]*et   # actual fraction of microbial turnover
-        deadmic_N_production[mt]=microbeTurnover[mt]*et/params['CN_microbe']
+        deadmic_C_production[mt]=microbeTurnover[mt]*et[mt]   # actual fraction of microbial turnover
+        deadmic_N_production[mt]=microbeTurnover[mt]*et[mt]/params['CN_microbe']
         # Note that we haven't set up mycorrhizal N cycle yet thus we only consider SAP CN interaction for now.
 
         # C and N available for microbial growth
@@ -188,8 +188,8 @@ def CORPSE_deriv(SOM,T,theta,params,claymod=1.0):
 
     derivs['ECMC'] += -microbeTurnover['ECM']
     derivs['AMC']  += -microbeTurnover['AM']
-    derivs['ECMN'] += -microbeTurnover['ECM']*et/params['CN_microbe']
-    derivs['AMN']  += -microbeTurnover['AM']*et/params['CN_microbe'] # Will change to "dmicrobe_C" as "for mt in mic_types" later on
+    derivs['ECMN'] += -microbeTurnover['ECM']*et[mt]/params['CN_microbe']
+    derivs['AMN']  += -microbeTurnover['AM']*et[mt]/params['CN_microbe'] # Will change to "dmicrobe_C" as "for mt in mic_types" later on
     derivs['ECMC']  = atleast_1d(derivs['ECMC'])
     derivs['AMC']   = atleast_1d(derivs['AMC'])
     derivs['ECMN']  = atleast_1d(derivs['ECMN'])

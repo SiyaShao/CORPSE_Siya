@@ -25,6 +25,9 @@ def fsolve_wrapper(SOM_list,T,theta,inputs,clay,params):
 
     for pool in inputs.keys():
         deriv[pool]+=inputs[pool]
+    deriv['CO2'] += inputs['ECMC']*(1-params['et']['ECM'])/params['et']['ECM']
+    deriv['CO2'] += inputs['AMC']*(1-params['et']['AM'])/params['et']['AM']
+    # Account for the CO2 production from mycorrhizal growth
 
     # Put the CORPSE pools back into a list that the equation solver can deal with
     if len(SOM_list)==len(fields)*2:
