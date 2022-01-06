@@ -49,7 +49,7 @@ params = {
     'frac_N_turnover_min': 0.2,
     'frac_turnover_slow': 0.2,
     'nup': {'Fast': 0.9, 'Slow': 0.6, 'Necro': 0.9},
-    'CN_microbe': 8.0,
+    'CN_microbe': {'SAP':8.0,'ECM':10.0,'AM':10.0},
     'max_immobilization_rate': 3.65,
     'substrate_diffusion_exp': 1.5,
     'new_resp_units': True,
@@ -58,7 +58,7 @@ params = {
     'Ohorizon_transfer_rates': {'uFastC': 0.1, 'uSlowC': 0.1, 'uNecroC': 0.1, 'uFastN': 0.1, 'uSlowN': 0.1,
                                 'uNecroN': 0.1}
 }
-SOM_init['SAPN'] = SOM_init['SAPC'] / params['CN_microbe']
+SOM_init['SAPN'] = SOM_init['SAPC'] / params['CN_microbe']['SAP']
 
 # ECM gradient plots
 nplots = 20
