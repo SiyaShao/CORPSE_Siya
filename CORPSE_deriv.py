@@ -6,7 +6,7 @@ expected_params={	'vmaxref': 'Relative maximum enzymatic decomp rates (length 3)
         	'gas_diffusion_exp': 'Determines suppression of decomp at high soil moisture',
             'substrate_diffusion_exp':'Determines suppression of decomp at low soil moisture',
         	'minMicrobeC':	   'Minimum microbial biomass (fraction of total C)',
-        	'Tmic': 'Microbial lifetime at 20C (years)',
+        	'Tmic': 'Microbial lifetime at 20C (years) (length 3)',
         	'et':		  'Fraction of turnover not converted to CO2',
         	'eup': 'Carbon uptake efficiency (length 3)',
             'nup': 'Nitrogen uptake efficiency (length 3)',
@@ -92,7 +92,7 @@ def CORPSE_deriv(SOM,T,theta,params,claymod=1.0):
     decomp=decompRate(SOM,T,theta,params)
 
     # Microbial turnover
-    microbeTurnover=atleast_1d((SOM['SAPC']-params['minMicrobeC']*(sumCtypes(SOM,'u')))/params['Tmic']);   # kg/m2/yr
+    microbeTurnover=atleast_1d((SOM['SAPC']-params['minMicrobeC']*(sumCtypes(SOM,'u')))/params['Tmic']['SAP']);   # kg/m2/yr
     if isinstance(microbeTurnover,float):
         microbeTurnover=max(0.0,microbeTurnover)
     else:

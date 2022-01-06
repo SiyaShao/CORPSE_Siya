@@ -40,7 +40,7 @@ params={
     'gas_diffusion_exp':0.6,  # Determines suppression of decomp at high soil moisture
     'substrate_diffusion_exp':1.5, # Dimensionless exponent. Determines suppression of decomp at low soil moisture
     'minMicrobeC':1e-3,       #Minimum microbial biomass (fraction of total C)
-    'Tmic':0.25,       # Microbial lifetime (years)
+    'Tmic':{'SAP':0.25,'ECM':0.25,'AM':0.25},       # Microbial lifetime (years)
     'et':0.6,          # Fraction of turnover not converted to CO2 (dimensionless)
     'eup':{'Fast':0.6,'Slow':0.05,'Necro':0.6}, # Carbon uptake efficiency (dimensionless fraction)
     'tProtected':75.0,    # Protected C turnoveir time (years)
@@ -138,10 +138,10 @@ def totalNitrogen(SOM):
 plt.figure('Mycorrhizal C&N for one sim',figsize=(4,5.3));plt.clf()
 
 plt.subplot(211)
-plt.plot(times,ECMC[:,10,1,2],label='ECMC') # %ECM 47.4%, %clay 10.0, %MAT 12.5
-plt.plot(times,AMC[:,10,1,2],label='AMC')
+plt.plot(times,ECMC[:,10,1,2],label='ECM_C') # %ECM 47.4%, %clay 10.0, %MAT 12.5
+plt.plot(times,AMC[:,10,1,2],label='AM_C')
 
-plt.xlabel('Time (days)')
+plt.xlabel('Time (years)')
 plt.ylabel('Mycorrhizal carbon')
 plt.title('Mycorrhizal C')
 plt.legend(fontsize='small')
