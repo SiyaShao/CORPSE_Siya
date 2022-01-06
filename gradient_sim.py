@@ -26,9 +26,7 @@ SOM_init = {'uFastC': 0.1,
             'inorganicN': 0.1,
             'CO2': 0.0,
             'ECMC': 0.0,
-            'AMC': 0.0,
-            'ECMN': 0.0,
-            'AMN': 0.0}
+            'AMC': 0.025}
 
 # Set model parameters
 # Note that carbon types have names, in contrast to previous version
@@ -40,8 +38,8 @@ params = {
     'gas_diffusion_exp': 0.6,  # Determines suppression of decomp at high soil moisture
     'substrate_diffusion_exp': 1.5,  # Dimensionless exponent. Determines suppression of decomp at low soil moisture
     'minMicrobeC': 1e-3,  # Minimum microbial biomass (fraction of total C)
-    'Tmic': {'SAP': 0.25, 'ECM': 1.0, 'AM': 0.25},  # Microbial lifetime (years)
-    'et': {'SAP': 0.6, 'ECM': 0.1, 'AM': 0.5},  # Fraction of turnover not converted to CO2 (dimensionless)
+    'Tmic': {'SAP': 0.25, 'ECM': 1.0, 'AM': 1.0},  # Microbial lifetime (years)
+    'et': {'SAP': 0.6, 'ECM': 0.6, 'AM': 0.6},  # Fraction of turnover not converted to CO2 (dimensionless)
     'eup': {'Fast': 0.6, 'Slow': 0.05, 'Necro': 0.6},  # Carbon uptake efficiency (dimensionless fraction)
     'tProtected': 75.0,  # Protected C turnoveir time (years)
     'protection_rate': {'Fast': 0.1, 'Slow': 0.0001, 'Necro': 1.5},  # Protected carbon formation rate (year-1)
@@ -53,6 +51,7 @@ params = {
     'max_immobilization_rate': 3.65,
     'substrate_diffusion_exp': 1.5,
     'new_resp_units': True,
+    'eup_myc': {'ECM':0.5,'AM':0.5},
     'max_mining_rate': {'Fast': 2.0, 'Slow': 1.0, 'Necro': 6.0},
     # assumed to be more efficient with Slow and Necro pools, and less efficient with fast pools, compared to SAPs
     'kc_mining': 0.015, # g microbial biomass C/g substrate C, Sulman et al., (2019)
@@ -66,6 +65,8 @@ params = {
                                 'uNecroN': 0.1}
 }
 SOM_init['SAPN'] = SOM_init['SAPC'] / params['CN_microbe']['SAP']
+SOM_init['ECMN'] = SOM_init['ECMC'] / params['CN_microbe']['ECM']
+SOM_init['AMN'] = SOM_init['AMC'] / params['CN_microbe']['AM']
 
 # ECM gradient plots
 nplots = 20
