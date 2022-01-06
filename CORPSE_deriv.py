@@ -162,9 +162,9 @@ def CORPSE_deriv(SOM,T,theta,params,claymod=1.0):
         derivs[k]=0.0
 
 
-    derivs['SAPC']=dmicrobeC['SAP']
-    derivs['SAPN']=dmicrobeN['SAP'] # Will change to "for mt in mic_types" later on for mycorrhizal fungi
-    derivs['CO2']=CO2prod
+    derivs['SAPC']=atleast_1d(dmicrobeC['SAP'])
+    derivs['SAPN']=atleast_1d(dmicrobeN['SAP']) # Will change to "for mt in mic_types" later on for mycorrhizal fungi
+    derivs['CO2'] =atleast_1d(CO2prod)
 
     for mt in mic_types:
         derivs['inorganicN'] += CN_imbalance_term[mt]
@@ -190,6 +190,10 @@ def CORPSE_deriv(SOM,T,theta,params,claymod=1.0):
     derivs['AMC']  += -microbeTurnover['AM']
     derivs['ECMN'] += -microbeTurnover['ECM']*et/params['CN_microbe']
     derivs['AMN']  += -microbeTurnover['AM']*et/params['CN_microbe'] # Will change to "dmicrobe_C" as "for mt in mic_types" later on
+    derivs['ECMC']  = atleast_1d(derivs['ECMC'])
+    derivs['AMC']   = atleast_1d(derivs['AMC'])
+    derivs['ECMN']  = atleast_1d(derivs['ECMN'])
+    derivs['AMN']   = atleast_1d(derivs['AMN'])
 
     return derivs
 
