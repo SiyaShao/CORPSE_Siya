@@ -45,7 +45,7 @@ params = {
     'protection_rate': {'Fast': 0.1, 'Slow': 0.0001, 'Necro': 1.5},  # Protected carbon formation rate (year-1)
     'new_resp_units': True,
     'frac_N_turnover_min': 0.2,
-    'frac_turnover_slow': {'SAP': 0.5, 'ECM': 0.8, 'AM': 0.2},
+    'frac_turnover_slow': {'SAP': 0.2, 'ECM': 0.8, 'AM': 0.0},
     'nup': {'Fast': 0.9, 'Slow': 0.6, 'Necro': 0.9},
     'CN_microbe': {'SAP':8.0,'ECM':10.0,'AM':10.0},
     'max_immobilization_rate': 3.65,
@@ -111,6 +111,7 @@ unprotC = numpy.zeros((nplots, nclays, nclimates))
 unprotN = numpy.zeros((nplots, nclays, nclimates))
 
 timesteps = 100  # According to what is set for times in the above lines (numpy.arrange)
+SAPC = numpy.zeros((timesteps, nplots, nclays, nclimates))
 ECMC = numpy.zeros((timesteps, nplots, nclays, nclimates))
 AMC = numpy.zeros((timesteps, nplots, nclays, nclimates))  # Document the mycorrhizal changes with time
 
@@ -142,8 +143,10 @@ for plotnum in range(nplots):
             unprotC[plotnum, claynum, climnum] = sumCtypes(result.iloc[-1], 'u')
             unprotN[plotnum, claynum, climnum] = sumCtypes(result.iloc[-1], 'u', 'N')
             for timenum in range(timesteps):
+                SAPCarray = result['SAPC']
                 ECMCarray = result['ECMC']
                 AMCarray = result['AMC']
+                SAPC[timenum, plotnum, claynum, climnum] = SAPCarray[timenum]
                 ECMC[timenum, plotnum, claynum, climnum] = ECMCarray[timenum]
                 AMC[timenum, plotnum, claynum, climnum] = AMCarray[timenum]
             n += 1
@@ -161,17 +164,50 @@ def totalNitrogen(SOM):
     from CORPSE_deriv import sumCtypes
     return sumCtypes(SOM, 'u', 'N') + sumCtypes(SOM, 'p', 'N') + SOM['SAPN']
 
+SMALL_SIZE = 8
+# plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
 
 plt.figure('Mycorrhizal C&N for one sim', figsize=(4, 5.3));
 plt.clf()
 
-plt.subplot(211)
-plt.plot(times, ECMC[:, 10, 1, 2], label='ECM_C')  # %ECM 47.4%, %clay 10.0, %MAT 12.5
-plt.plot(times, AMC[:, 10, 1, 2], label='AM_C')
+plt.subplot(221)
+plt.plot(times, SAPC[:, 0, 0, 1], label='SAP_C')
+plt.plot(times, ECMC[:, 0, 0, 1], label='ECM_C')
+plt.plot(times, AMC[:, 0, 0, 1], label='AM_C')
 
 plt.xlabel('Time (years)')
-plt.ylabel('Mycorrhizal carbon')
-plt.title('Mycorrhizal C')
+plt.ylabel('Microbial carbon')
+plt.title('%ECM = 0 %AM = 100 %clay = 10',fontsize=SMALL_SIZE)
+plt.legend(fontsize='small')
+
+plt.subplot(222)
+plt.plot(times, SAPC[:, 19, 0, 1], label='SAP_C')
+plt.plot(times, ECMC[:, 19, 0, 1], label='ECM_C')
+plt.plot(times, AMC[:, 19, 0, 1], label='AM_C')
+
+plt.xlabel('Time (years)')
+plt.ylabel('Microbial carbon')
+plt.title('%ECM = 100 %AM = 0 %clay = 10',fontsize=SMALL_SIZE)
+plt.legend(fontsize='small')
+
+plt.subplot(223)
+plt.plot(times, SAPC[:, 0, 1, 1], label='SAP_C')
+plt.plot(times, ECMC[:, 0, 1, 1], label='ECM_C')
+plt.plot(times, AMC[:, 0, 1, 1], label='AM_C')
+
+plt.xlabel('Time (years)')
+plt.ylabel('Microbial carbon')
+plt.title('%ECM% = 0 %AM = 100 %clay = 70',fontsize=SMALL_SIZE)
+plt.legend(fontsize='small')
+
+plt.subplot(224)
+plt.plot(times, SAPC[:, 19, 1, 1], label='SAP_C')
+plt.plot(times, ECMC[:, 19, 1, 1], label='ECM_C')
+plt.plot(times, AMC[:, 19, 1, 1], label='AM_C')
+
+plt.xlabel('Time (years)')
+plt.ylabel('Microbial carbon')
+plt.title('%ECM = 100 %AM = 0 %clay = 70',fontsize=SMALL_SIZE)
 plt.legend(fontsize='small')
 
 plt.figure('C and N for one sim', figsize=(4, 5.3));
@@ -182,9 +218,9 @@ plt.plot(times, totalCarbon(result), c='k', label='Total C')
 plt.plot(times, result['pNecroC'], label='pNecroC')
 plt.plot(times, result['uSlowC'], label='uSlowC')
 
-plt.xlabel('Time (days)')
+# plt.xlabel('Time (days)')
 plt.ylabel('Total carbon')
-plt.title('Total C stock')
+# plt.title('Total C stock')
 plt.legend(fontsize='small')
 
 plt.subplot(212)
@@ -192,9 +228,9 @@ plt.plot(times, totalNitrogen(result), c='k', label='Total N')
 plt.plot(times, result['pNecroN'], label='pNecroN')
 plt.plot(times, result['uSlowN'], label='uSlowN')
 
-plt.xlabel('Time (days)')
+plt.xlabel('Time (years)')
 plt.ylabel('Total nitrogen')
-plt.title('Total N')
+# plt.title('Total N')
 plt.legend(fontsize='small')
 
 protCfrac = protC / (protC + unprotC)
@@ -212,10 +248,11 @@ for claynum in [0, 1]:
         plt.plot(ECM_pct, protCfrac[:, claynum, climnum], marker=markers[claynum], c=cmap(norm(MAT[climnum])),
                  label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
 
-plt.xlabel('ECM percent (%)')
+# plt.xlabel('ECM percent (%)')
 plt.ylabel('Protected C fraction')
 plt.legend(fontsize='small')
 plt.title('Protected SOM C fraction')
+plt.ylim([0.2, 0.95])
 
 plt.subplot(212)
 for claynum in [0, 1]:
@@ -227,8 +264,9 @@ plt.xlabel('ECM percent (%)')
 plt.ylabel('Protected N fraction')
 # plt.legend()
 plt.title('Protected SOM N fraction')
+plt.ylim([0.5, 1.0])
 
-plt.figure('N stock and C:N', figsize=(6, 8));
+plt.figure('CN stock and C:N', figsize=(6, 8));
 plt.clf()
 plt.subplot(311)
 for claynum in [0, 1]:
@@ -236,13 +274,14 @@ for claynum in [0, 1]:
         plt.plot(ECM_pct, (protC + unprotC)[:, claynum, climnum], ms=4, marker=markers[claynum],
                  c=cmap(norm(MAT[climnum])),
                  label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
-        plt.plot(ECM_pct, (protC)[:, claynum, climnum], ms=4, marker=markers[claynum], mfc='w',
-                 c=cmap(norm(MAT[climnum])))
+        # plt.plot(ECM_pct, (protC)[:, claynum, climnum], ms=4, marker=markers[claynum], mfc='w',
+        #          c=cmap(norm(MAT[climnum])))
 
-plt.xlabel('ECM percent (%)')
+# plt.xlabel('ECM percent (%)')
 plt.ylabel('Total C stock')
 # plt.legend()
-plt.title('Total C stock')
+# plt.title('Total C stock')
+plt.ylim([0, 25])
 
 plt.subplot(312)
 for claynum in [0, 1]:
@@ -251,10 +290,11 @@ for claynum in [0, 1]:
                  c=cmap(norm(MAT[climnum])),
                  label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
 
-plt.xlabel('ECM percent (%)')
+# plt.xlabel('ECM percent (%)')
 plt.ylabel('Total N stock')
 # plt.legend()
-plt.title('Total N stock')
+# plt.title('Total N stock')
+plt.ylim([0.0, 1.4])
 
 plt.subplot(313)
 for claynum in [0, 1]:
@@ -266,7 +306,8 @@ for claynum in [0, 1]:
 plt.xlabel('ECM percent (%)')
 plt.ylabel('C:N ratio')
 # plt.legend()
-plt.title('C:N ratio')
+# plt.title('C:N ratio')
+plt.ylim([5, 25])
 plt.legend(fontsize='small')
 
 plt.figure('Myco effect vs decomp rate');
