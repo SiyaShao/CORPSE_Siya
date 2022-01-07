@@ -126,7 +126,7 @@ for plotnum in range(nplots):
                     mat=MAT[climnum]))
 
             litter_CN_site = litter_CN_ECM*ECM_pct[plotnum]/100 + litter_CN_AM*(1-ECM_pct[plotnum]/100)
-            Ndemand = total_inputs*fastfrac_site[plotnum]/litter_CN_site + total_inputs*(1-fastfrac_site[plotnum])/litter_CN_site
+            Ndemand = total_inputs/litter_CN_site
             # Calculate plant Ndemand from N in litter production
             # Assuming plant N_litter balances plant N_uptake and plant not relying on roots
             # This will not be needed once the model is coupled with a plant model

@@ -170,6 +170,17 @@ def CORPSE_deriv(SOM,T,theta,Ndemand,Ctransfer,params,claymod=1.0):
         dmicrobeN[mt] = dmicrobeC[mt] / params['CN_microbe'][mt]
         CN_imbalance_term[mt]= nitrogen_supply[mt] - (carbon_supply[mt]-maintenance_resp[mt])/params['CN_microbe'][mt]*loc_Clim
 
+    # If mycorrhizal fungi transfer too much N to plants (exceeding plant N demands), then mycorrhizal N acquisition
+    # is decreased accordingly. This will not be needed once coupled to a plant growth model.
+    Ntransfer = max(0.0,CN_imbalance_term['ECM']) + max(0.0,CN_imbalance_term['AM'])
+    if Ntransfer>Ndemand:
+       Nmining_d = (Ntransfer-Ndemand)*max(0.0,CN_imbalance_term['ECM'])/Ntransfer
+       for t in chem_types:
+           if nitrogen_supply['ECM']>0.0:
+              Nmining[t+'N'] = Nmining[t+'N']*(nitrogen_supply['ECM']-Nmining_d)/nitrogen_supply['ECM']
+       Nscavenging_d = Ntransfer-Ndemand-Nmining_d
+       nitrogen_supply['AM'] += -Nscavenging_d
+
     # CO2 production and cumulative CO2 produced by cohort
     CO2prod = sum(maintenance_resp.values()) + sum(overflow_resp.values()) # Sum up all the CO2 production from different microbial groups
     for t in chem_types:
