@@ -14,7 +14,7 @@ expected_params={	'vmaxref': 'Relative maximum enzymatic decomp rates (length 3)
         	'protection_rate':'Protected carbon formation rate (year-1) (length 3)',
             'CN_microbe': 'C:N ratio of microbial biomass (length 3)',
             'frac_N_turnover_min': 'Fraction of microbial biomass N turnover that is mineralized',
-            'frac_turnover_slow': 'Fraction of microbial biomass N turnover that goes to slow pool',
+            'frac_turnover_slow': 'Fraction of microbial biomass N turnover that goes to slow pool (length 3)',
             'max_immobilization_rate': 'Maximum N immobilization rate (fraction per day) (length 3)',
             'new_resp_units':'If true, vmaxref has units of 1/years and assumes optimal soil moisture has a relative rate of 1.0',
             'eup_myc':'Carbon uptake efficiency for mycorrhizal fungi (length 2)',
@@ -111,7 +111,6 @@ def CORPSE_deriv(SOM,T,theta,Ndemand,Ctransfer,params,claymod=1.0):
     CN_imbalance_term = {'SAP':0.0,'ECM':0.0,'AM':0.0}
     # Separate microbial metabolisms among different microbial types
 
-    Nacq_simb = {'ECM':0.0,'AM':0.0}
     Nacq_simb_max = {'ECM':0.0,'AM':0.0}
     Nmining = NminingRate(SOM,T,theta,params)
     Nacq_simb_max['ECM'] = sum(Nmining.values())
@@ -214,10 +213,10 @@ def CORPSE_deriv(SOM,T,theta,Ndemand,Ctransfer,params,claymod=1.0):
         derivs['p'+t+'N']=protectedNprod[t]-protectedNturnover[t]
 
     for mt in mic_types:
-        derivs['uNecroC'] += deadmic_C_production[mt]*(1.0-params['frac_turnover_slow'])
-        derivs['uSlowC']  += deadmic_C_production[mt]*params['frac_turnover_slow']
+        derivs['uNecroC'] += deadmic_C_production[mt]*(1.0-params['frac_turnover_slow'][mt])
+        derivs['uSlowC']  += deadmic_C_production[mt]*params['frac_turnover_slow'][mt]
         turnover_N_min    =  deadmic_N_production[mt]*params['frac_N_turnover_min'];
-        turnover_N_slow   =  deadmic_N_production[mt]*(1.0-params['frac_N_turnover_min'])*params['frac_turnover_slow'];
+        turnover_N_slow   =  deadmic_N_production[mt]*(1.0-params['frac_N_turnover_min'])*params['frac_turnover_slow'][mt];
         derivs['uNecroN'] += deadmic_N_production[mt]-turnover_N_min-turnover_N_slow
         derivs['uSlowN']  += turnover_N_slow
         derivs['inorganicN']  += turnover_N_min
