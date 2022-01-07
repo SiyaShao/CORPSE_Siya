@@ -45,7 +45,7 @@ params = {
     'protection_rate': {'Fast': 0.1, 'Slow': 0.0001, 'Necro': 1.5},  # Protected carbon formation rate (year-1)
     'new_resp_units': True,
     'frac_N_turnover_min': 0.2,
-    'frac_turnover_slow': {'SAP': 0.2, 'ECM': 0.8, 'AM': 0.0},
+    'frac_turnover_slow': {'SAP': 0.5, 'ECM': 0.8, 'AM': 0.0},
     'nup': {'Fast': 0.9, 'Slow': 0.6, 'Necro': 0.9},
     'CN_microbe': {'SAP':8.0,'ECM':10.0,'AM':10.0},
     'max_immobilization_rate': 3.65,
