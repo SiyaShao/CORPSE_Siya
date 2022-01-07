@@ -113,7 +113,8 @@ def CORPSE_deriv(SOM,T,theta,Ndemand,Ctransfer,params,claymod=1.0):
 
     Nacq_simb = {'ECM':0.0,'AM':0.0}
     Nacq_simb_max = {'ECM':0.0,'AM':0.0}
-    Nacq_simb_max['ECM'] = 0.0
+    Nmining = NminingRate(SOM,T,theta,params)
+    Nacq_simb_max['ECM'] = sum(Nmining.values())
     Nacq_simb_max['AM'] = params['max_scavenging_rate'] * SOM['inorganicN']/(SOM['inorganicN']+params['kc_scavenging_IN']*params['depth']) \
                      * SOM['AMC']/(SOM['AMC']+params['kc_scavenging']*params['depth'])
     # Calculate potential ECM N mining and AM N scavenging
@@ -188,7 +189,7 @@ def CORPSE_deriv(SOM,T,theta,Ndemand,Ctransfer,params,claymod=1.0):
     derivs['SAPC']=atleast_1d(dmicrobeC['SAP'])
     derivs['SAPN']=atleast_1d(dmicrobeN['SAP']) # Will change to "for mt in mic_types" later on for mycorrhizal fungi
     derivs['CO2'] =atleast_1d(CO2prod)
-    derivs['inorganicN'] += CN_imbalance_term['SAP']
+    derivs['inorganicN'] += CN_imbalance_term['SAP']-nitrogen_supply['AM'] # SAP net N mineralization + AM N scavenging
 
     for mt in mic_types:
         for t in chem_types:
@@ -197,7 +198,8 @@ def CORPSE_deriv(SOM,T,theta,Ndemand,Ctransfer,params,claymod=1.0):
     for t in chem_types:
         derivs['u'+t+'C']=-decomp[t+'C']+protectedCturnover[t]-protectedCprod[t]
         derivs['p'+t+'C']=protectedCprod[t]-protectedCturnover[t]
-        derivs['u'+t+'N']=-decomp[t+'N']+protectedNturnover[t]-protectedNprod[t]
+        derivs['u'+t+'N']=-decomp[t+'N']+protectedNturnover[t]-protectedNprod[t]-Nmining[t+'N']
+        # N loss in decomposition & N transferred to protected pools & N mining from ECM
         derivs['p'+t+'N']=protectedNprod[t]-protectedNturnover[t]
 
     for mt in mic_types:
@@ -224,11 +226,10 @@ def decompRate(SOM,T,theta,params):
     if params['new_resp_units']:
         theta_resp_max=params['substrate_diffusion_exp']/(params['gas_diffusion_exp']*(1.0+params['substrate_diffusion_exp']/params['gas_diffusion_exp']))
         aerobic_max=theta_resp_max**params['substrate_diffusion_exp']*(1.0-theta_resp_max)**params['gas_diffusion_exp']
-
     else:
         aerobic_max=1.0
 
-    vmax=Vmax(T,params)
+    vmax=Vmax(T,params,'decompo')
 
     decompRate={}
     dodecomp=atleast_1d((sumCtypes(SOM,'u')!=0.0)&(theta!=0.0)&(SOM['SAPC']!=0.0))
@@ -240,7 +241,28 @@ def decompRate(SOM,T,theta,params):
 
     return decompRate
 
-def Vmax(T,params):
+# N mining rate
+def NminingRate(SOM,T,theta,params):
+
+    # This only really needs to be calculated once
+    if params['new_resp_units']:
+        theta_resp_max=params['substrate_diffusion_exp']/(params['gas_diffusion_exp']*(1.0+params['substrate_diffusion_exp']/params['gas_diffusion_exp']))
+        aerobic_max=theta_resp_max**params['substrate_diffusion_exp']*(1.0-theta_resp_max)**params['gas_diffusion_exp']
+    else:
+        aerobic_max=1.0
+
+    vmax=Vmax(T,params,'Nmining')
+
+    NminingRate={}
+    dodecomp=atleast_1d((sumCtypes(SOM,'u')!=0.0)&(theta!=0.0)&(SOM['SAPC']!=0.0))
+    for t in chem_types:
+        if dodecomp.any():
+           drate=where(dodecomp,vmax[t]*theta**params['substrate_diffusion_exp']*(SOM['u'+t+'C'])*SOM['ECMC']/(sumCtypes(SOM,'u')*params['kc_mining']+SOM['ECMC'])*(1.0-theta)**params['gas_diffusion_exp']/aerobic_max,0.0)
+        NminingRate[t+'N']=where(SOM['u'+t+'C']>0,drate*SOM['u'+t+'N']/SOM['u'+t+'C'],0.0)
+
+    return NminingRate
+
+def Vmax(T,params,process):
     '''Vmax function, normalized to Tref=293.15
     T is in K'''
 
@@ -249,7 +271,11 @@ def Vmax(T,params):
 
     from numpy import exp
 
-    Vmax=dict([(t,params['vmaxref'][t]*exp(-params['Ea'][t]*(1.0/(Rugas*T)-1.0/(Rugas*Tref)))) for t in chem_types]);
+    if process=='decompo':
+       Vmax=dict([(t,params['vmaxref'][t]*exp(-params['Ea'][t]*(1.0/(Rugas*T)-1.0/(Rugas*Tref)))) for t in chem_types]);
+    elif process=='Nmining':
+       Vmax=dict([(t,params['max_mining_rate'][t]*exp(-params['Ea'][t]*(1.0/(Rugas*T)-1.0/(Rugas*Tref)))) for t in chem_types])
+
     return Vmax
 
 def sumCtypes(SOM,prefix,suffix='C'):
