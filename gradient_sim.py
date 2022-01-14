@@ -59,7 +59,8 @@ params = {
     'kc_scavenging': 0.3, # kgC/m3, Sulman et al., (2019)
     'kc_scavenging_IN': 0.001, # kgN/m3, Sulman et al., (2019)
     'depth': 0.1, # 10cm, assumed for now.
-    'iN_loss_rate': 10.0,
+    'iN_loss_rate': 10.0, # Loss rate from inorganic N pool (year-1). >1 since it takes much less than a year for it to be removed
+    'N_deposition': 0.0015,  # 1.5gN/m2/yr
     # Loss rate from inorganic N pool (year-1). >1 since it takes much less than a year for it to be removed
     'Ohorizon_transfer_rates': {'uFastC': 0.1, 'uSlowC': 0.1, 'uNecroC': 0.1, 'uFastN': 0.1, 'uSlowN': 0.1,
                                 'uNecroN': 0.1}
@@ -109,11 +110,21 @@ protC = numpy.zeros((nplots, nclays, nclimates))
 protN = numpy.zeros((nplots, nclays, nclimates))
 unprotC = numpy.zeros((nplots, nclays, nclimates))
 unprotN = numpy.zeros((nplots, nclays, nclimates))
+inorgN = numpy.zeros((nplots, nclays, nclimates))
 
-timesteps = 100  # According to what is set for times in the above lines (numpy.arrange)
+timesteps = len(times)  # According to what is set for times in the above lines (numpy.arrange)
 SAPC = numpy.zeros((timesteps, nplots, nclays, nclimates))
 ECMC = numpy.zeros((timesteps, nplots, nclays, nclimates))
 AMC = numpy.zeros((timesteps, nplots, nclays, nclimates))  # Document the mycorrhizal changes with time
+UnprotectedC = numpy.zeros((timesteps, nplots, nclays, nclimates))
+UnFastC = numpy.zeros((timesteps, nplots, nclays, nclimates))
+UnSlowC = numpy.zeros((timesteps, nplots, nclays, nclimates))
+UnNecroC = numpy.zeros((timesteps, nplots, nclays, nclimates))
+ProtectedC = numpy.zeros((timesteps, nplots, nclays, nclimates))
+PFastC = numpy.zeros((timesteps, nplots, nclays, nclimates))
+PSlowC = numpy.zeros((timesteps, nplots, nclays, nclimates))
+PNecroC = numpy.zeros((timesteps, nplots, nclays, nclimates))
+InorgN = numpy.zeros((timesteps, nplots, nclays, nclimates))
 
 n = 0
 from CORPSE_deriv import sumCtypes
@@ -142,13 +153,32 @@ for plotnum in range(nplots):
             protN[plotnum, claynum, climnum] = sumCtypes(result.iloc[-1], 'p', 'N')
             unprotC[plotnum, claynum, climnum] = sumCtypes(result.iloc[-1], 'u')
             unprotN[plotnum, claynum, climnum] = sumCtypes(result.iloc[-1], 'u', 'N')
+            inorgN[plotnum, claynum, climnum] = result.iloc[-1]['inorganicN']
             for timenum in range(timesteps):
                 SAPCarray = result['SAPC']
                 ECMCarray = result['ECMC']
                 AMCarray = result['AMC']
+                UnFastCCarray = result['uFastC']
+                UnSlowCCarray = result['uSlowC']
+                UnNecroCCarray = result['uNecroC']
+                UnprotectedCarray = sumCtypes(result.iloc[:], 'u', 'C')
+                PFastCCarray = result['pFastC']
+                PSlowCCarray = result['pSlowC']
+                PNecroCCarray = result['pNecroC']
+                ProtectedCarray = sumCtypes(result.iloc[:], 'p', 'C')
+                InorgNarray = result['inorganicN']
                 SAPC[timenum, plotnum, claynum, climnum] = SAPCarray[timenum]
                 ECMC[timenum, plotnum, claynum, climnum] = ECMCarray[timenum]
                 AMC[timenum, plotnum, claynum, climnum] = AMCarray[timenum]
+                UnFastC[timenum, plotnum, claynum, climnum] = UnFastCCarray[timenum]
+                UnSlowC[timenum, plotnum, claynum, climnum] = UnSlowCCarray[timenum]
+                UnNecroC[timenum, plotnum, claynum, climnum] = UnNecroCCarray[timenum]
+                UnprotectedC[timenum, plotnum, claynum, climnum] = UnprotectedCarray[timenum]
+                PFastC[timenum, plotnum, claynum, climnum] = PFastCCarray[timenum]
+                PSlowC[timenum, plotnum, claynum, climnum] = PSlowCCarray[timenum]
+                PNecroC[timenum, plotnum, claynum, climnum] = PNecroCCarray[timenum]
+                ProtectedC[timenum, plotnum, claynum, climnum] = ProtectedCarray[timenum]
+                InorgN[timenum, plotnum, claynum, climnum] = InorgNarray[timenum]
             n += 1
 
 # Plot the results
@@ -322,5 +352,83 @@ for claynum in [0, 1]:
 
 plt.xlabel('Unprotected C turnover time (years)')
 plt.ylabel('Protected C fraction')
+
+plt.figure('Unprotected CN stock', figsize=(6, 8));
+plt.clf()
+plt.subplot(211)
+for claynum in [0, 1]:
+    for climnum in range(len(MAT)):
+        plt.plot(ECM_pct, (unprotC)[:, claynum, climnum], ms=4, marker=markers[claynum],
+                 c=cmap(norm(MAT[climnum])),
+                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+        # plt.plot(ECM_pct, (protC)[:, claynum, climnum], ms=4, marker=markers[claynum], mfc='w',
+        #          c=cmap(norm(MAT[climnum])))
+
+# plt.xlabel('ECM percent (%)')
+plt.ylabel('Total unprotected C stock')
+# plt.legend()
+# plt.title('Total C stock')
+plt.ylim([0, 15])
+
+plt.subplot(212)
+for claynum in [0, 1]:
+    for climnum in range(len(MAT)):
+        plt.plot(ECM_pct, (unprotN)[:, claynum, climnum], ms=4, marker=markers[claynum],
+                 c=cmap(norm(MAT[climnum])),
+                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+        # plt.plot(ECM_pct, (protN)[:, claynum, climnum], ms=4, marker=markers[claynum], mfc='w',
+        #          c=cmap(norm(MAT[climnum])))
+
+# plt.xlabel('ECM percent (%)')
+plt.ylabel('Total unprotected N stock')
+# plt.legend()
+# plt.title('Total C stock')
+plt.ylim([0, 0.7])
+
+plt.figure('Unprotected and protected C', figsize=(6, 8));
+plt.clf()
+plt.subplot(121)
+plt.plot(times, UnFastC[:, 19, 0, 1], label='Unprotected_FastC')
+plt.plot(times, UnSlowC[:, 19, 0, 1], label='Unprotected_SlowC')
+plt.plot(times, UnNecroC[:, 19, 0, 1], label='Unprotected_NecroC')
+plt.plot(times, UnprotectedC[:, 19, 0, 1], label='Unprotected_C')
+
+plt.xlabel('Time (years)')
+plt.ylabel('Unprotected soil carbon')
+plt.title('%ECM = 100 %AM = 0 %clay = 10',fontsize=SMALL_SIZE)
+plt.legend(fontsize='small')
+
+plt.subplot(122)
+plt.plot(times, PFastC[:, 19, 0, 1], label='Protected_FastC')
+plt.plot(times, PSlowC[:, 19, 0, 1], label='Protected_SlowC')
+plt.plot(times, PNecroC[:, 19, 0, 1], label='Protected_NecroC')
+plt.plot(times, ProtectedC[:, 19, 0, 1], label='Protected_C')
+
+plt.xlabel('Time (years)')
+plt.ylabel('Protected soil carbon')
+plt.title('%ECM = 100 %AM = 0 %clay = 10',fontsize=SMALL_SIZE)
+plt.legend(fontsize='small')
+
+plt.figure('Inorganic N', figsize=(6, 8));
+plt.clf()
+plt.subplot(121)
+plt.plot(times, InorgN[:, 19, 0, 1], label='Inorganic N')
+plt.xlabel('Time (years)')
+plt.ylabel('Total unprotected N stock (kgN/m2)')
+plt.title('%ECM = 100 %AM = 0 %clay = 10',fontsize=SMALL_SIZE)
+plt.legend(fontsize='small')
+
+plt.subplot(122)
+for claynum in [0, 1]:
+    for climnum in range(len(MAT)):
+        plt.plot(ECM_pct, inorgN[:, claynum, climnum], ms=4, marker=markers[claynum],
+                 c=cmap(norm(MAT[climnum])),
+                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+        # plt.plot(ECM_pct, (protN)[:, claynum, climnum], ms=4, marker=markers[claynum], mfc='w',
+        #          c=cmap(norm(MAT[climnum])))
+
+plt.xlabel('ECM percent (%)')
+plt.ylabel('Total unprotected N stock (kgN/m2)')
+plt.legend()
 
 plt.show()

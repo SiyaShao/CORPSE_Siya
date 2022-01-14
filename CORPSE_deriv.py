@@ -199,7 +199,9 @@ def CORPSE_deriv(SOM,T,theta,Ndemand,Ctransfer,params,claymod=1.0):
     derivs['SAPC']=atleast_1d(dmicrobeC['SAP'])
     derivs['SAPN']=atleast_1d(dmicrobeN['SAP']) # Will change to "for mt in mic_types" later on for mycorrhizal fungi
     derivs['CO2'] =atleast_1d(CO2prod)
-    derivs['inorganicN'] += CN_imbalance_term['SAP']-nitrogen_supply['AM'] # SAP net N mineralization + AM N scavenging
+
+    derivs['inorganicN'] += CN_imbalance_term['SAP']-nitrogen_supply['AM']-SOM['inorganicN']*params['iN_loss_rate'] + \
+        params['N_deposition']  # SAP net N mineralization + AM N scavenging - N loss + N deposition
 
     for mt in mic_types:
         for t in chem_types:
