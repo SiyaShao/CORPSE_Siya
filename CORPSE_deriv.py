@@ -128,7 +128,7 @@ def CORPSE_deriv(SOM,T,theta,Ndemand,Ctransfer,params,claymod=1.0):
         maintenance_resp[mt]=microbeTurnover[mt]*(1.0-et[mt])
 
         deadmic_C_production[mt]=microbeTurnover[mt]*et[mt]   # actual fraction of microbial turnover
-        deadmic_N_production[mt]=microbeTurnover[mt]*et[mt]/params['CN_microbe'][mt]
+        deadmic_N_production[mt]=microbeTurnover[mt]/params['CN_microbe'][mt]
         # Note that we haven't set up mycorrhizal N cycle yet thus we only consider SAP CN interaction for now.
 
         # C and N available for microbial growth
@@ -167,7 +167,7 @@ def CORPSE_deriv(SOM,T,theta,Ndemand,Ctransfer,params,claymod=1.0):
            loc_Clim=1-loc_Nlim
         dmicrobeC[mt]=(carbon_supply[mt] - microbeTurnover[mt])*loc_Clim
         dmicrobeN[mt] = dmicrobeC[mt] / params['CN_microbe'][mt]
-        CN_imbalance_term[mt]= nitrogen_supply[mt] - (carbon_supply[mt]-maintenance_resp[mt])/params['CN_microbe'][mt]*loc_Clim
+        CN_imbalance_term[mt]= nitrogen_supply[mt] - carbon_supply[mt]/params['CN_microbe'][mt]*loc_Clim
 
     # If mycorrhizal fungi transfer too much N to plants (exceeding plant N demands), then mycorrhizal N acquisition
     # is decreased accordingly. This will not be needed once coupled to a plant growth model.
@@ -179,6 +179,8 @@ def CORPSE_deriv(SOM,T,theta,Ndemand,Ctransfer,params,claymod=1.0):
               Nmining[t+'N'] = Nmining[t+'N']*(nitrogen_supply['ECM']-Nmining_d)/nitrogen_supply['ECM']
        Nscavenging_d = Ntransfer-Ndemand-Nmining_d
        nitrogen_supply['AM'] += -Nscavenging_d
+    else:
+       print('!! Unbalanced N budget for the plants')
 
     # CO2 production and cumulative CO2 produced by cohort
     CO2prod = sum(maintenance_resp.values()) + sum(overflow_resp.values()) # Sum up all the CO2 production from different microbial groups
@@ -203,9 +205,8 @@ def CORPSE_deriv(SOM,T,theta,Ndemand,Ctransfer,params,claymod=1.0):
     derivs['inorganicN'] += CN_imbalance_term['SAP']-nitrogen_supply['AM']-SOM['inorganicN']*params['iN_loss_rate'] + \
         params['N_deposition']  # SAP net N mineralization + AM N scavenging - N loss + N deposition
 
-    for mt in mic_types:
-        for t in chem_types:
-            derivs['inorganicN'] += decomp[t+'N']*(1-params['nup'][t])
+    for t in chem_types:
+        derivs['inorganicN'] += decomp[t+'N']*(1-params['nup'][t])
 
     for t in chem_types:
         derivs['u'+t+'C']=-decomp[t+'C']+protectedCturnover[t]-protectedCprod[t]

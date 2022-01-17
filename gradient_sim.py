@@ -87,6 +87,9 @@ litter_CN_ECM = 50
 litter_CN_site = litter_CN_ECM * ECM_pct / 100 + litter_CN_AM * (1 - ECM_pct / 100)
 total_inputs = 0.5  # kgC/m2
 
+fastfrac_site[:] = 0.1
+litter_CN_site = 50
+
 myc_ratio_NPP = 0.2  # Ratio of C transferred to mycorrhizal fungi to NPP
 myc_ratio_litter = myc_ratio_NPP / (
             1 - myc_ratio_NPP)  # Ratio of C transferred to mycorrhizal fungi to litter production
@@ -100,7 +103,7 @@ Ctransfer = {'ECM':0.0,'AM':0.0} # Initialize C tranfer from plants to symbiont 
 
 theta = 0.5  # fraction of saturation
 
-times = numpy.arange(0, 1000,
+times = numpy.arange(0, 5000,
                      10)  # Time steps to evaluate. Defining these in day units but need to convert to years for actual model simulations.
 # The ODE solver uses an adaptive timestep but will return these time points
 
@@ -111,6 +114,10 @@ protN = numpy.zeros((nplots, nclays, nclimates))
 unprotC = numpy.zeros((nplots, nclays, nclimates))
 unprotN = numpy.zeros((nplots, nclays, nclimates))
 inorgN = numpy.zeros((nplots, nclays, nclimates))
+sapC = numpy.zeros((nplots, nclays, nclimates))
+ecmC = numpy.zeros((nplots, nclays, nclimates))
+amC = numpy.zeros((nplots, nclays, nclimates))
+microbC = numpy.zeros((nplots, nclays, nclimates))
 
 timesteps = len(times)  # According to what is set for times in the above lines (numpy.arrange)
 SAPC = numpy.zeros((timesteps, nplots, nclays, nclimates))
@@ -137,7 +144,7 @@ for plotnum in range(nplots):
                     simnum=n, totsims=nplots * nclays * nclimates, ecmpct=ECM_pct[plotnum], claypct=clay[claynum],
                     mat=MAT[climnum]))
 
-            litter_CN_site = litter_CN_ECM*ECM_pct[plotnum]/100 + litter_CN_AM*(1-ECM_pct[plotnum]/100)
+            litter_CN_site = 50
             Ndemand = total_inputs/litter_CN_site
             # Calculate plant Ndemand from N in litter production
             # Assuming plant N_litter balances plant N_uptake and plant not relying on roots
@@ -154,6 +161,10 @@ for plotnum in range(nplots):
             unprotC[plotnum, claynum, climnum] = sumCtypes(result.iloc[-1], 'u')
             unprotN[plotnum, claynum, climnum] = sumCtypes(result.iloc[-1], 'u', 'N')
             inorgN[plotnum, claynum, climnum] = result.iloc[-1]['inorganicN']
+            sapC[plotnum, claynum, climnum] = result.iloc[-1]['SAPC']
+            ecmC[plotnum, claynum, climnum] = result.iloc[-1]['ECMC']
+            amC[plotnum, claynum, climnum] = result.iloc[-1]['AMC']
+            microbC[plotnum, claynum, climnum] = result.iloc[-1]['SAPC']+result.iloc[-1]['ECMC']+result.iloc[-1]['AMC']
             for timenum in range(timesteps):
                 SAPCarray = result['SAPC']
                 ECMCarray = result['ECMC']
@@ -282,7 +293,6 @@ for claynum in [0, 1]:
 plt.ylabel('Protected C fraction')
 plt.legend(fontsize='small')
 plt.title('Protected SOM C fraction')
-plt.ylim([0.2, 0.95])
 
 plt.subplot(212)
 for claynum in [0, 1]:
@@ -294,7 +304,6 @@ plt.xlabel('ECM percent (%)')
 plt.ylabel('Protected N fraction')
 # plt.legend()
 plt.title('Protected SOM N fraction')
-plt.ylim([0.5, 1.0])
 
 plt.figure('CN stock and C:N', figsize=(6, 8));
 plt.clf()
@@ -311,7 +320,6 @@ for claynum in [0, 1]:
 plt.ylabel('Total C stock')
 # plt.legend()
 # plt.title('Total C stock')
-plt.ylim([0, 25])
 
 plt.subplot(312)
 for claynum in [0, 1]:
@@ -324,7 +332,6 @@ for claynum in [0, 1]:
 plt.ylabel('Total N stock')
 # plt.legend()
 # plt.title('Total N stock')
-plt.ylim([0.0, 1.4])
 
 plt.subplot(313)
 for claynum in [0, 1]:
@@ -337,7 +344,6 @@ plt.xlabel('ECM percent (%)')
 plt.ylabel('C:N ratio')
 # plt.legend()
 # plt.title('C:N ratio')
-plt.ylim([5, 25])
 plt.legend(fontsize='small')
 
 plt.figure('Myco effect vs decomp rate');
@@ -368,7 +374,6 @@ for claynum in [0, 1]:
 plt.ylabel('Total unprotected C stock')
 # plt.legend()
 # plt.title('Total C stock')
-plt.ylim([0, 15])
 
 plt.subplot(212)
 for claynum in [0, 1]:
@@ -383,7 +388,6 @@ for claynum in [0, 1]:
 plt.ylabel('Total unprotected N stock')
 # plt.legend()
 # plt.title('Total C stock')
-plt.ylim([0, 0.7])
 
 plt.figure('Unprotected and protected C', figsize=(6, 8));
 plt.clf()
@@ -414,7 +418,7 @@ plt.clf()
 plt.subplot(121)
 plt.plot(times, InorgN[:, 19, 0, 1], label='Inorganic N')
 plt.xlabel('Time (years)')
-plt.ylabel('Total unprotected N stock (kgN/m2)')
+plt.ylabel('Inorganic N stock (kgN/m2)')
 plt.title('%ECM = 100 %AM = 0 %clay = 10',fontsize=SMALL_SIZE)
 plt.legend(fontsize='small')
 
@@ -428,7 +432,48 @@ for claynum in [0, 1]:
         #          c=cmap(norm(MAT[climnum])))
 
 plt.xlabel('ECM percent (%)')
-plt.ylabel('Total unprotected N stock (kgN/m2)')
+plt.ylabel('Inorganic N stock (kgN/m2)')
+plt.ylim([0, 0.0003])
 plt.legend()
+
+plt.figure('Inorganic and microbial N', figsize=(6, 8));
+plt.clf()
+
+plt.subplot(221)
+for claynum in [0, 1]:
+    for climnum in range(len(MAT)):
+        plt.plot(ECM_pct, sapC[:, claynum, climnum], ms=4, marker=markers[claynum],
+                 c=cmap(norm(MAT[climnum])),
+                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+        plt.xlabel('ECM percent (%)')
+        plt.ylabel('SAP C (KgC/m2)')
+
+plt.subplot(222)
+for claynum in [0, 1]:
+    for climnum in range(len(MAT)):
+        plt.plot(ECM_pct, ecmC[:, claynum, climnum], ms=4, marker=markers[claynum],
+                 c=cmap(norm(MAT[climnum])),
+                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+        plt.xlabel('ECM percent (%)')
+        plt.ylabel('ECM C (KgC/m2)')
+
+plt.subplot(223)
+for claynum in [0, 1]:
+    for climnum in range(len(MAT)):
+        plt.plot(ECM_pct, amC[:, claynum, climnum], ms=4, marker=markers[claynum],
+                 c=cmap(norm(MAT[climnum])),
+                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+        plt.xlabel('ECM percent (%)')
+        plt.ylabel('AM C (KgC/m2)')
+
+plt.subplot(224)
+for claynum in [0, 1]:
+    for climnum in range(len(MAT)):
+        plt.plot(ECM_pct, microbC[:, claynum, climnum], ms=4, marker=markers[claynum],
+                 c=cmap(norm(MAT[climnum])),
+                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+        plt.xlabel('ECM percent (%)')
+        plt.ylabel('Total Microbial C (KgC/m2)')
+        plt.legend(fontsize='small')
 
 plt.show()
