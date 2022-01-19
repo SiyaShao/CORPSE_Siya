@@ -114,8 +114,9 @@ def CORPSE_deriv(SOM,T,theta,Ndemand,Ctransfer,params,claymod=1.0):
     Nacq_simb_max = {'ECM':0.0,'AM':0.0}
     Nmining = NminingRate(SOM,T,theta,params)
     Nacq_simb_max['ECM'] = sum(Nmining.values())
-    Nacq_simb_max['AM'] = params['max_scavenging_rate'] * SOM['inorganicN']/(SOM['inorganicN']+params['kc_scavenging_IN']*params['depth']) \
-                     * SOM['AMC']/(SOM['AMC']+params['kc_scavenging']*params['depth'])
+    Nacq_simb_max['AM'] = params['max_scavenging_rate']['AM'] * SOM['inorganicN'] / (
+            SOM['inorganicN'] + params['kc_scavenging_IN']['AM'] * params['depth']) \
+                          * SOM['AMC'] / (SOM['AMC'] + params['kc_scavenging']['AM'] * params['depth'])
     # Calculate potential ECM N mining and AM N scavenging
 
     for mt in mic_types:
@@ -136,7 +137,9 @@ def CORPSE_deriv(SOM,T,theta,Ndemand,Ctransfer,params,claymod=1.0):
            for t in chem_types:
                carbon_supply[mt]=carbon_supply[mt]+decomp[t+'C']*params['eup'][t]
                nitrogen_supply[mt]=nitrogen_supply[mt]+decomp[t+'N']*params['nup'][t]
-           IMM_N_max=atleast_1d(params['max_immobilization_rate']*365*SOM['inorganicN']/(SOM['inorganicN']+params['max_immobilization_rate']))
+               IMM_N_max = params['max_scavenging_rate']['SAP'] * SOM['inorganicN'] / (
+                       SOM['inorganicN'] + params['kc_scavenging_IN']['SAP'] * params['depth']) \
+                                 * SOM['SAPC'] / (SOM['SAPC'] + params['kc_scavenging']['SAP'] * params['depth'])
         else:
            carbon_supply[mt] += Ctransfer[mt]*params['eup_myc'][mt]
            nitrogen_supply[mt] += Nacq_simb_max[mt]

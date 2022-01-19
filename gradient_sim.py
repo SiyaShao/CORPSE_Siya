@@ -55,9 +55,12 @@ params = {
     'max_mining_rate': {'Fast': 2.0, 'Slow': 1.0, 'Necro': 6.0},
     # assumed to be more efficient with Slow and Necro pools, and less efficient with fast pools, compared to SAPs
     'kc_mining': 0.015, # g microbial biomass C/g substrate C, Sulman et al., (2019)
-    'max_scavenging_rate': 0.2, # kgN/m2/year, Sulman et al., (2019)
-    'kc_scavenging': 0.3, # kgC/m3, Sulman et al., (2019)
-    'kc_scavenging_IN': 0.001, # kgN/m3, Sulman et al., (2019)
+    'max_scavenging_rate': {'SAP':0.16,'ECM':0.0,'AM':0.2},
+    # kgN/m2/year, AM value is from Sulman et al., (2019), assumed 80% AM capacity for SAP N immobilization, 0 for ECM
+    'kc_scavenging': {'SAP':0.3,'ECM':0.3,'AM':0.3},
+    # kgC/m3, AM value is from Sulman et al., (2019), assumed to be the same for other microbes
+    'kc_scavenging_IN': {'SAP':0.001,'ECM':0.001,'AM':0.001},
+    # kgN/m3, AM value is from Sulman et al., (2019), assumed to be the same for other microbes
     'depth': 0.1, # 10cm, assumed for now.
     'iN_loss_rate': 10.0, # Loss rate from inorganic N pool (year-1). >1 since it takes much less than a year for it to be removed
     'N_deposition': 0.0015,  # 1.5gN/m2/yr
