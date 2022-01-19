@@ -144,7 +144,6 @@ for plotnum in range(nplots):
                     simnum=n, totsims=nplots * nclays * nclimates, ecmpct=ECM_pct[plotnum], claypct=clay[claynum],
                     mat=MAT[climnum]))
 
-            litter_CN_site = 50
             Ndemand = total_inputs/litter_CN_site
             # Calculate plant Ndemand from N in litter production
             # Assuming plant N_litter balances plant N_uptake and plant not relying on roots
@@ -278,7 +277,7 @@ protCfrac = protC / (protC + unprotC)
 protNfrac = protN / (protN + unprotN)
 
 norm = plt.Normalize(5, 20)
-cmap = plt.get_cmap('cool')
+cmap = plt.get_cmap('rainbow')
 markers = ['o', 's']
 
 plt.figure('Protected fraction of C and N', figsize=(6, 8));

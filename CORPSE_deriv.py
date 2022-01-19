@@ -146,28 +146,25 @@ def CORPSE_deriv(SOM,T,theta,Ndemand,Ctransfer,params,claymod=1.0):
         # Growth is nitrogen limited, with not enough mineral N to support it with max immobilization
         # loc_Nlim is originally a vector of True/False that tells the code where this condition applies
         # Now change loc_Nlim, loc_immob and loc_Clim to values 0/1 to make it more concise
-        loc_Nlim=int((carbon_supply[mt])>((nitrogen_supply[mt]+IMM_N_max)*params['CN_microbe'][mt]))
-        CN_imbalance_term[mt] = -IMM_N_max*loc_Nlim
-        dmicrobeC[mt] = ((nitrogen_supply[mt]+IMM_N_max)*params['CN_microbe'][mt] - microbeTurnover[mt])*loc_Nlim
-        dmicrobeN[mt] = dmicrobeC[mt]/params['CN_microbe'][mt]
-        overflow_resp[mt] = (carbon_supply[mt]-(nitrogen_supply[mt]+IMM_N_max)*params['CN_microbe'][mt])*loc_Nlim
-
-        # Growth must be supported by immobilization of some mineral nitrogen, but is ultimately carbon limited
-        if mt=='SAP':
-           loc_immob=(carbon_supply[mt] >= nitrogen_supply[mt]*params['CN_microbe'][mt]) & (carbon_supply[mt] < (nitrogen_supply[mt]+IMM_N_max)*params['CN_microbe'][mt])
-           loc_immob=int(loc_immob)
-           CN_imbalance_term[mt] = -(carbon_supply[mt]/params['CN_microbe'][mt] - nitrogen_supply[mt])*loc_immob
-           dmicrobeC[mt] = (carbon_supply[mt] - microbeTurnover[mt])*loc_immob
-           dmicrobeN[mt] = dmicrobeC[mt] / params['CN_microbe'][mt]
-
-        # Growth is carbon limited and extra N is mineralized
-        if mt=='SAP':
-           loc_Clim=1-loc_Nlim*loc_immob
+        loc_Nlim = int((carbon_supply[mt])>((nitrogen_supply[mt]+IMM_N_max)*params['CN_microbe'][mt]))
+        if loc_Nlim==1:
+            if mt == 'SAP':
+                print('SAPs are N limiting')
+            CN_imbalance_term[mt] = -IMM_N_max*loc_Nlim
+            dmicrobeC[mt] = ((nitrogen_supply[mt]+IMM_N_max)*params['CN_microbe'][mt] - microbeTurnover[mt])*loc_Nlim
+            dmicrobeN[mt] = dmicrobeC[mt]/params['CN_microbe'][mt]
+            overflow_resp[mt] = (carbon_supply[mt]-(nitrogen_supply[mt]+IMM_N_max)*params['CN_microbe'][mt])*loc_Nlim
         else:
-           loc_Clim=1-loc_Nlim
-        dmicrobeC[mt]=(carbon_supply[mt] - microbeTurnover[mt])*loc_Clim
-        dmicrobeN[mt] = dmicrobeC[mt] / params['CN_microbe'][mt]
-        CN_imbalance_term[mt]= nitrogen_supply[mt] - carbon_supply[mt]/params['CN_microbe'][mt]*loc_Clim
+            # Growth is ultimately carbon limited
+            # but must be supported by immobilization of some mineral nitrogen or extra N is mineralized
+            # if mt == 'SAP':
+            #     loc_immob = int(carbon_supply[mt] >= nitrogen_supply[mt] * params['CN_microbe'][mt]) & (
+            #                 carbon_supply[mt] < (nitrogen_supply[mt] + IMM_N_max) * params['CN_microbe'][mt])
+            # For MYC fungi, since IMM_N_max = 0, this refers to the situation where extra N is transported to plants
+            loc_Clim = 1
+            CN_imbalance_term[mt] = (nitrogen_supply[mt] - carbon_supply[mt] / params['CN_microbe'][mt]) * loc_Clim
+            dmicrobeC[mt] = (carbon_supply[mt] - microbeTurnover[mt]) * loc_Clim
+            dmicrobeN[mt] = dmicrobeC[mt] / params['CN_microbe'][mt]
 
     # If mycorrhizal fungi transfer too much N to plants (exceeding plant N demands), then mycorrhizal N acquisition
     # is decreased accordingly. This will not be needed once coupled to a plant growth model.
