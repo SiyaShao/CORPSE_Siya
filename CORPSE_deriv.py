@@ -23,6 +23,7 @@ expected_params={	'vmaxref': 'Relative maximum enzymatic decomp rates (length 3)
             'max_scavenging_rate':'Maximum N scavenging rates from soil inorganic N pools (AM fungi)',
             'kc_scavenging': 'Half-saturation constant of AM biomass concentration for AM N scavenging',
             'kc_scavenging_IN': 'Half-saturation constant of inorganic N concentration for AM N scavenging',
+            'Ea_inorgN': 'Activation energy for immobilization of inorganic N',
             'depth': 'Soil depth'
             }
 
@@ -114,7 +115,7 @@ def CORPSE_deriv(SOM,T,theta,Ndemand,Ctransfer,params,claymod=1.0):
     Nacq_simb_max = {'ECM':0.0,'AM':0.0}
     Nmining = NminingRate(SOM,T,theta,params)
     Nacq_simb_max['ECM'] = sum(Nmining.values())
-    Nacq_simb_max['AM'] = params['max_scavenging_rate']['AM'] * SOM['inorganicN'] / (
+    Nacq_simb_max['AM'] = T_factor(T,params) * params['max_scavenging_rate']['AM'] * SOM['inorganicN'] / (
             SOM['inorganicN'] + params['kc_scavenging_IN']['AM'] * params['depth']) \
                           * SOM['AMC'] / (SOM['AMC'] + params['kc_scavenging']['AM'] * params['depth'])
     # Calculate potential ECM N mining and AM N scavenging
@@ -137,7 +138,7 @@ def CORPSE_deriv(SOM,T,theta,Ndemand,Ctransfer,params,claymod=1.0):
            for t in chem_types:
                carbon_supply[mt]=carbon_supply[mt]+decomp[t+'C']*params['eup'][t]
                nitrogen_supply[mt]=nitrogen_supply[mt]+decomp[t+'N']*params['nup'][t]
-               IMM_N_max = params['max_scavenging_rate']['SAP'] * SOM['inorganicN'] / (
+               IMM_N_max = T_factor(T,params) * params['max_scavenging_rate']['SAP'] * SOM['inorganicN'] / (
                        SOM['inorganicN'] + params['kc_scavenging_IN']['SAP'] * params['depth']) \
                                  * SOM['SAPC'] / (SOM['SAPC'] + params['kc_scavenging']['SAP'] * params['depth'])
         else:
@@ -290,6 +291,17 @@ def Vmax(T,params,process):
        Vmax=dict([(t,params['max_mining_rate'][t]*exp(-params['Ea'][t]*(1.0/(Rugas*T)-1.0/(Rugas*Tref)))) for t in chem_types])
 
     return Vmax
+
+def T_factor(T,params):
+
+    Tref=293.15;
+    Rugas=8.314472;
+
+    from numpy import exp
+
+    T_factor = exp(-params['Ea_inorgN'] * (1.0 / (Rugas * T) - 1.0 / (Rugas * Tref)))
+
+    return T_factor
 
 def sumCtypes(SOM,prefix,suffix='C'):
     out=SOM[prefix+chem_types[0]+suffix]
