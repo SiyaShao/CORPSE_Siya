@@ -26,7 +26,9 @@ SOM_init = {'uFastC': 0.1,
             'inorganicN': 0.1,
             'CO2': 0.0,
             'ECMC': 0.025,
-            'AMC': 0.025}
+            'AMC': 0.025,
+            'Int_ECMC': 0.0,
+            'Int_AMC': 0.0}
 
 # Set model parameters
 # Note that carbon types have names, in contrast to previous version
@@ -64,7 +66,7 @@ params = {
     'Ea_inorgN': 37e3,  # (kJ/mol) Activation energy for immobilization of inorganic N from Sulman et al., (2019)
     'depth': 0.1, # 10cm, assumed for now.
     'iN_loss_rate': 10.0, # Loss rate from inorganic N pool (year-1). >1 since it takes much less than a year for it to be removed
-    'N_deposition': 0.0015,  # 1.5gN/m2/yr
+    'N_deposition': 0.001,  # 1.0gN/m2/yr
     # Loss rate from inorganic N pool (year-1). >1 since it takes much less than a year for it to be removed
     'Ohorizon_transfer_rates': {'uFastC': 0.1, 'uSlowC': 0.1, 'uNecroC': 0.1, 'uFastN': 0.1, 'uSlowN': 0.1,
                                 'uNecroN': 0.1}
@@ -101,7 +103,9 @@ myc_ratio_litter = myc_ratio_NPP / (
 inputs = {'uFastC': total_inputs * fastfrac_site,
           'uSlowC': total_inputs * (1 - fastfrac_site),
           'uFastN': total_inputs * fastfrac_site / litter_CN_site,
-          'uSlowN': total_inputs * (1 - fastfrac_site) / litter_CN_site}# gC/year. Can contain any model pools.
+          'uSlowN': total_inputs * (1 - fastfrac_site) / litter_CN_site,
+          'Int_ECMC': total_inputs * myc_ratio_litter * ECM_pct / 100,
+          'Int_AMC': total_inputs * myc_ratio_litter * (1 - ECM_pct / 100)}
 
 Ctransfer = {'ECM':0.0,'AM':0.0} # Initialize C tranfer from plants to symbiont fungi
 
@@ -156,7 +160,7 @@ for plotnum in range(nplots):
             Ctransfer['ECM'] = total_inputs * myc_ratio_litter * ECM_pct[plotnum] / 100
             Ctransfer['AM'] = total_inputs * myc_ratio_litter * (1-ECM_pct[plotnum] / 100)
 
-            result = CORPSE_integrate.run_CORPSE_ODE(T=MAT[climnum], theta=theta, Ndemand=Ndemand,Ctransfer=Ctransfer,
+            result = CORPSE_integrate.run_CORPSE_ODE(T=MAT[climnum], theta=theta, Ndemand=Ndemand,
                                                      inputs=dict([(k, inputs[k][plotnum]) for k in inputs]),
                                                      clay=clay[claynum], initvals=SOM_init, params=params, times=times)
             protC[plotnum, claynum, climnum] = sumCtypes(result.iloc[-1], 'p')

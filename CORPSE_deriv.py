@@ -39,7 +39,8 @@ expected_pools = ['u'+t+'C' for t in chem_types]+\
                  ['p'+t+'N' for t in chem_types]+\
                  [mt+'C' for mt in mic_types]   +\
                  [mt+'N' for mt in mic_types]   +\
-                 ['CO2','inorganicN']
+                 ['CO2','inorganicN']           +\
+                 ['Int_ECMC', 'Int_AMC']
 #                 ['livingMicrobeC','livingMicrobeN','CO2','inorganicN',]
 
 
@@ -77,7 +78,7 @@ def check_params(params):
 
 
 from numpy import zeros,size,where,atleast_1d,zeros_like
-def CORPSE_deriv(SOM,T,theta,Ndemand,Ctransfer,params,claymod=1.0):
+def CORPSE_deriv(SOM,T,theta,Ndemand,params,claymod=1.0):
     '''Calculate rates of change for all CORPSE pools
        T: Temperature (K)
        theta: Soil water content (fraction of saturation)
@@ -142,9 +143,9 @@ def CORPSE_deriv(SOM,T,theta,Ndemand,Ctransfer,params,claymod=1.0):
                        SOM['inorganicN'] + params['kc_scavenging_IN']['SAP'] * params['depth']) \
                                  * SOM['SAPC'] / (SOM['SAPC'] + params['kc_scavenging']['SAP'] * params['depth'])
         else:
-           carbon_supply[mt] += Ctransfer[mt]*params['eup_myc'][mt]
+           carbon_supply[mt] += SOM['Int_'+mt+'C'] * params['eup_myc'][mt]
            nitrogen_supply[mt] += Nacq_simb_max[mt]
-           maintenance_resp[mt] += Ctransfer[mt]*(1-params['eup_myc'][mt])  # MYC Respiration from transforming C from plants to growth
+           maintenance_resp[mt] += SOM['Int_' + mt + 'C'] * (1-params['eup_myc'][mt])
            IMM_N_max=atleast_1d(0.0)
 
         # Growth is nitrogen limited, with not enough mineral N to support it with max immobilization
@@ -229,6 +230,9 @@ def CORPSE_deriv(SOM,T,theta,Ndemand,Ctransfer,params,claymod=1.0):
     derivs['ECMN'] = atleast_1d(dmicrobeN['ECM'])
     derivs['AMC'] = atleast_1d(dmicrobeC['AM'])
     derivs['AMN'] = atleast_1d(dmicrobeN['AM'])
+
+    derivs['Int_ECMC'] = atleast_1d(-SOM['Int_ECMC'])
+    derivs['Int_AMC'] = atleast_1d(-SOM['Int_AMC'])
 
     return derivs
 
