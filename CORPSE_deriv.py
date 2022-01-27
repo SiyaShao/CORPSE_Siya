@@ -181,8 +181,8 @@ def CORPSE_deriv(SOM,T,theta,Ndemand,params,claymod=1.0):
               Nmining[t+'N'] = Nmining[t+'N']*(nitrogen_supply['ECM']-Nmining_d)/nitrogen_supply['ECM']
        Nscavenging_d = Ntransfer-Ndemand-Nmining_d
        nitrogen_supply['AM'] += -Nscavenging_d
-    else:
-       print('!! Unbalanced N budget for the plants')
+    # else:
+    #    print('!! Unbalanced N budget for the plants')
 
     # CO2 production and cumulative CO2 produced by cohort
     CO2prod = sum(maintenance_resp.values()) + sum(overflow_resp.values()) # Sum up all the CO2 production from different microbial groups

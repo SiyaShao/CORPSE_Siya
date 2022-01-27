@@ -111,8 +111,10 @@ Ctransfer = {'ECM':0.0,'AM':0.0} # Initialize C tranfer from plants to symbiont 
 
 theta = 0.5  # fraction of saturation
 
-times = numpy.arange(0, 5000,
-                     10)  # Time steps to evaluate. Defining these in day units but need to convert to years for actual model simulations.
+spinuptimes = numpy.arange(0, 2500,
+                     10)  # Time steps for model spinup as spinning up on monthly timestep would take too much time
+finaltimes = numpy.arange(0, 25,
+                     1/4)  # Time steps to evaluat, running on monthly timestep
 # The ODE solver uses an adaptive timestep but will return these time points
 
 
@@ -127,7 +129,7 @@ ecmC = numpy.zeros((nplots, nclays, nclimates))
 amC = numpy.zeros((nplots, nclays, nclimates))
 microbC = numpy.zeros((nplots, nclays, nclimates))
 
-timesteps = len(times)  # According to what is set for times in the above lines (numpy.arrange)
+timesteps = len(finaltimes)  # According to what is set for times in the above lines (numpy.arrange)
 SAPC = numpy.zeros((timesteps, nplots, nclays, nclimates))
 ECMC = numpy.zeros((timesteps, nplots, nclays, nclimates))
 AMC = numpy.zeros((timesteps, nplots, nclays, nclimates))  # Document the mycorrhizal changes with time
@@ -162,7 +164,12 @@ for plotnum in range(nplots):
 
             result = CORPSE_integrate.run_CORPSE_ODE(T=MAT[climnum], theta=theta, Ndemand=Ndemand,
                                                      inputs=dict([(k, inputs[k][plotnum]) for k in inputs]),
-                                                     clay=clay[claynum], initvals=SOM_init, params=params, times=times)
+                                                     clay=clay[claynum], initvals=SOM_init, params=params,
+                                                     times=spinuptimes, runtype='Spinup')
+            result = CORPSE_integrate.run_CORPSE_ODE(T=MAT[climnum], theta=theta, Ndemand=Ndemand,
+                                                     inputs=dict([(k, inputs[k][plotnum]) for k in inputs]),
+                                                     clay=clay[claynum], initvals=result.iloc[-1], params=params,
+                                                     times=finaltimes, runtype='Final')
             protC[plotnum, claynum, climnum] = sumCtypes(result.iloc[-1], 'p')
             protN[plotnum, claynum, climnum] = sumCtypes(result.iloc[-1], 'p', 'N')
             unprotC[plotnum, claynum, climnum] = sumCtypes(result.iloc[-1], 'u')
@@ -219,9 +226,9 @@ plt.figure('Mycorrhizal C&N for one sim', figsize=(4, 5.3));
 plt.clf()
 
 plt.subplot(221)
-plt.plot(times, SAPC[:, 0, 0, 1], label='SAP_C')
-plt.plot(times, ECMC[:, 0, 0, 1], label='ECM_C')
-plt.plot(times, AMC[:, 0, 0, 1], label='AM_C')
+plt.plot(finaltimes, SAPC[:, 0, 0, 1], label='SAP_C')
+plt.plot(finaltimes, ECMC[:, 0, 0, 1], label='ECM_C')
+plt.plot(finaltimes, AMC[:, 0, 0, 1], label='AM_C')
 
 plt.xlabel('Time (years)')
 plt.ylabel('Microbial carbon')
@@ -229,9 +236,9 @@ plt.title('%ECM = 0 %AM = 100 %clay = 10',fontsize=SMALL_SIZE)
 plt.legend(fontsize='small')
 
 plt.subplot(222)
-plt.plot(times, SAPC[:, 19, 0, 1], label='SAP_C')
-plt.plot(times, ECMC[:, 19, 0, 1], label='ECM_C')
-plt.plot(times, AMC[:, 19, 0, 1], label='AM_C')
+plt.plot(finaltimes, SAPC[:, 19, 0, 1], label='SAP_C')
+plt.plot(finaltimes, ECMC[:, 19, 0, 1], label='ECM_C')
+plt.plot(finaltimes, AMC[:, 19, 0, 1], label='AM_C')
 
 plt.xlabel('Time (years)')
 plt.ylabel('Microbial carbon')
@@ -239,9 +246,9 @@ plt.title('%ECM = 100 %AM = 0 %clay = 10',fontsize=SMALL_SIZE)
 plt.legend(fontsize='small')
 
 plt.subplot(223)
-plt.plot(times, SAPC[:, 0, 1, 1], label='SAP_C')
-plt.plot(times, ECMC[:, 0, 1, 1], label='ECM_C')
-plt.plot(times, AMC[:, 0, 1, 1], label='AM_C')
+plt.plot(finaltimes, SAPC[:, 0, 1, 1], label='SAP_C')
+plt.plot(finaltimes, ECMC[:, 0, 1, 1], label='ECM_C')
+plt.plot(finaltimes, AMC[:, 0, 1, 1], label='AM_C')
 
 plt.xlabel('Time (years)')
 plt.ylabel('Microbial carbon')
@@ -249,9 +256,9 @@ plt.title('%ECM% = 0 %AM = 100 %clay = 70',fontsize=SMALL_SIZE)
 plt.legend(fontsize='small')
 
 plt.subplot(224)
-plt.plot(times, SAPC[:, 19, 1, 1], label='SAP_C')
-plt.plot(times, ECMC[:, 19, 1, 1], label='ECM_C')
-plt.plot(times, AMC[:, 19, 1, 1], label='AM_C')
+plt.plot(finaltimes, SAPC[:, 19, 1, 1], label='SAP_C')
+plt.plot(finaltimes, ECMC[:, 19, 1, 1], label='ECM_C')
+plt.plot(finaltimes, AMC[:, 19, 1, 1], label='AM_C')
 
 plt.xlabel('Time (years)')
 plt.ylabel('Microbial carbon')
@@ -262,9 +269,9 @@ plt.figure('C and N for one sim', figsize=(4, 5.3));
 plt.clf()
 
 plt.subplot(211)
-plt.plot(times, totalCarbon(result), c='k', label='Total C')
-plt.plot(times, result['pNecroC'], label='pNecroC')
-plt.plot(times, result['uSlowC'], label='uSlowC')
+plt.plot(finaltimes, totalCarbon(result), c='k', label='Total C')
+plt.plot(finaltimes, result['pNecroC'], label='pNecroC')
+plt.plot(finaltimes, result['uSlowC'], label='uSlowC')
 
 # plt.xlabel('Time (days)')
 plt.ylabel('Total carbon')
@@ -272,9 +279,9 @@ plt.ylabel('Total carbon')
 plt.legend(fontsize='small')
 
 plt.subplot(212)
-plt.plot(times, totalNitrogen(result), c='k', label='Total N')
-plt.plot(times, result['pNecroN'], label='pNecroN')
-plt.plot(times, result['uSlowN'], label='uSlowN')
+plt.plot(finaltimes, totalNitrogen(result), c='k', label='Total N')
+plt.plot(finaltimes, result['pNecroN'], label='pNecroN')
+plt.plot(finaltimes, result['uSlowN'], label='uSlowN')
 
 plt.xlabel('Time (years)')
 plt.ylabel('Total nitrogen')
@@ -399,10 +406,10 @@ plt.ylabel('Total unprotected N stock')
 plt.figure('Unprotected and protected C', figsize=(6, 8));
 plt.clf()
 plt.subplot(121)
-plt.plot(times, UnFastC[:, 19, 0, 1], label='Unprotected_FastC')
-plt.plot(times, UnSlowC[:, 19, 0, 1], label='Unprotected_SlowC')
-plt.plot(times, UnNecroC[:, 19, 0, 1], label='Unprotected_NecroC')
-plt.plot(times, UnprotectedC[:, 19, 0, 1], label='Unprotected_C')
+plt.plot(finaltimes, UnFastC[:, 19, 0, 1], label='Unprotected_FastC')
+plt.plot(finaltimes, UnSlowC[:, 19, 0, 1], label='Unprotected_SlowC')
+plt.plot(finaltimes, UnNecroC[:, 19, 0, 1], label='Unprotected_NecroC')
+plt.plot(finaltimes, UnprotectedC[:, 19, 0, 1], label='Unprotected_C')
 
 plt.xlabel('Time (years)')
 plt.ylabel('Unprotected soil carbon')
@@ -410,10 +417,10 @@ plt.title('%ECM = 100 %AM = 0 %clay = 10',fontsize=SMALL_SIZE)
 plt.legend(fontsize='small')
 
 plt.subplot(122)
-plt.plot(times, PFastC[:, 19, 0, 1], label='Protected_FastC')
-plt.plot(times, PSlowC[:, 19, 0, 1], label='Protected_SlowC')
-plt.plot(times, PNecroC[:, 19, 0, 1], label='Protected_NecroC')
-plt.plot(times, ProtectedC[:, 19, 0, 1], label='Protected_C')
+plt.plot(finaltimes, PFastC[:, 19, 0, 1], label='Protected_FastC')
+plt.plot(finaltimes, PSlowC[:, 19, 0, 1], label='Protected_SlowC')
+plt.plot(finaltimes, PNecroC[:, 19, 0, 1], label='Protected_NecroC')
+plt.plot(finaltimes, ProtectedC[:, 19, 0, 1], label='Protected_C')
 
 plt.xlabel('Time (years)')
 plt.ylabel('Protected soil carbon')
@@ -423,7 +430,7 @@ plt.legend(fontsize='small')
 plt.figure('Inorganic N', figsize=(6, 8));
 plt.clf()
 plt.subplot(121)
-plt.plot(times, InorgN[:, 19, 0, 1], label='Inorganic N')
+plt.plot(finaltimes, InorgN[:, 19, 0, 1], label='Inorganic N')
 plt.xlabel('Time (years)')
 plt.ylabel('Inorganic N stock (kgN/m2)')
 plt.title('%ECM = 100 %AM = 0 %clay = 10',fontsize=SMALL_SIZE)
