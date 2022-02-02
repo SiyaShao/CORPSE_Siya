@@ -40,7 +40,7 @@ expected_pools = ['u'+t+'C' for t in chem_types]+\
                  [mt+'C' for mt in mic_types]   +\
                  [mt+'N' for mt in mic_types]   +\
                  ['CO2','inorganicN']           +\
-                 ['Int_ECMC', 'Int_AMC']
+                 ['Int_ECMC', 'Int_AMC', 'Int_N']
 #                 ['livingMicrobeC','livingMicrobeN','CO2','inorganicN',]
 
 
@@ -78,7 +78,7 @@ def check_params(params):
 
 
 from numpy import zeros,size,where,atleast_1d,zeros_like
-def CORPSE_deriv(SOM,T,theta,Ndemand,params,claymod=1.0):
+def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,params,claymod=1.0):
     '''Calculate rates of change for all CORPSE pools
        T: Temperature (K)
        theta: Soil water content (fraction of saturation)
@@ -153,8 +153,8 @@ def CORPSE_deriv(SOM,T,theta,Ndemand,params,claymod=1.0):
         # Now change loc_Nlim, loc_immob and loc_Clim to values 0/1 to make it more concise
         loc_Nlim = int((carbon_supply[mt])>((nitrogen_supply[mt]+IMM_N_max)*params['CN_microbe'][mt]))
         if loc_Nlim==1:
-            if mt == 'SAP':
-                print('SAPs are N limiting')
+            # if mt == 'SAP':
+            #     print('SAPs are N limiting')
             CN_imbalance_term[mt] = -IMM_N_max*loc_Nlim
             dmicrobeC[mt] = ((nitrogen_supply[mt]+IMM_N_max)*params['CN_microbe'][mt] - microbeTurnover[mt])*loc_Nlim
             dmicrobeN[mt] = dmicrobeC[mt]/params['CN_microbe'][mt]
@@ -171,16 +171,25 @@ def CORPSE_deriv(SOM,T,theta,Ndemand,params,claymod=1.0):
             dmicrobeC[mt] = (carbon_supply[mt] - microbeTurnover[mt]) * loc_Clim
             dmicrobeN[mt] = dmicrobeC[mt] / params['CN_microbe'][mt]
 
-    # If mycorrhizal fungi transfer too much N to plants (exceeding plant N demands), then mycorrhizal N acquisition
+    # If mycorrhizal fungi transfer too much N to plants (N_int pool exceeding 2*Ndemand), then mycorrhizal N acquisition
     # is decreased accordingly. This will not be needed once coupled to a plant growth model.
     Ntransfer = max(0.0,CN_imbalance_term['ECM']) + max(0.0,CN_imbalance_term['AM'])
-    if Ntransfer>Ndemand:
-       Nmining_d = (Ntransfer-Ndemand)*max(0.0,CN_imbalance_term['ECM'])/Ntransfer
-       for t in chem_types:
-           if nitrogen_supply['ECM']>0.0:
-              Nmining[t+'N'] = Nmining[t+'N']*(nitrogen_supply['ECM']-Nmining_d)/nitrogen_supply['ECM']
-       Nscavenging_d = Ntransfer-Ndemand-Nmining_d
-       nitrogen_supply['AM'] += -Nscavenging_d
+    # if Ntransfer>Ndemand:
+    #    Nmining_d = (Ntransfer-Ndemand)*max(0.0,CN_imbalance_term['ECM'])/Ntransfer
+    #    for t in chem_types:
+    #        if nitrogen_supply['ECM']>0.0:
+    #           Nmining[t+'N'] = Nmining[t+'N']*(nitrogen_supply['ECM']-Nmining_d)/nitrogen_supply['ECM']
+    #    Nscavenging_d = Ntransfer-Ndemand-Nmining_d
+    #    nitrogen_supply['AM'] += -Nscavenging_d
+    if SOM['Int_N']+Ntransfer-Nlitter>2*Ndemand:
+        Ntransfer_deduct = min(Ntransfer,(SOM['Int_N']+Ntransfer-Nlitter-2*Ndemand))
+        Nmining_d = Ntransfer_deduct*max(0.0,CN_imbalance_term['ECM'])/Ntransfer
+        for t in chem_types:
+            if nitrogen_supply['ECM']>0.0:
+               Nmining[t+'N'] = Nmining[t+'N']*(nitrogen_supply['ECM']-Nmining_d)/nitrogen_supply['ECM']
+        Nscavenging_d = Ntransfer_deduct-Nmining_d
+        nitrogen_supply['AM'] += -Nscavenging_d
+        Ntransfer -= Ntransfer_deduct
     # else:
     #    print('!! Unbalanced N budget for the plants')
 
@@ -233,6 +242,7 @@ def CORPSE_deriv(SOM,T,theta,Ndemand,params,claymod=1.0):
 
     derivs['Int_ECMC'] = atleast_1d(-SOM['Int_ECMC'])
     derivs['Int_AMC'] = atleast_1d(-SOM['Int_AMC'])
+    derivs['Int_N'] = atleast_1d(Ntransfer-Nlitter)
 
     return derivs
 

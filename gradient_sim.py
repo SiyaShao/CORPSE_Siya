@@ -28,7 +28,8 @@ SOM_init = {'uFastC': 0.1,
             'ECMC': 0.025,
             'AMC': 0.025,
             'Int_ECMC': 0.0,
-            'Int_AMC': 0.0}
+            'Int_AMC': 0.0,
+            'Int_N': 0.0}  # Not splitting intermediate N pool between ECM and AM for now
 
 # Set model parameters
 # Note that carbon types have names, in contrast to previous version
@@ -47,7 +48,7 @@ params = {
     'protection_rate': {'Fast': 0.1, 'Slow': 0.0001, 'Necro': 1.5},  # Protected carbon formation rate (year-1)
     'new_resp_units': True,
     'frac_N_turnover_min': 0.2,
-    'frac_turnover_slow': {'SAP': 0.2, 'ECM': 0.8, 'AM': 0.0},
+    'frac_turnover_slow': {'SAP': 0.2, 'ECM': 0.2, 'AM': 0.2},
     'nup': {'Fast': 0.9, 'Slow': 0.6, 'Necro': 0.9},
     'CN_microbe': {'SAP':8.0,'ECM':10.0,'AM':10.0},
     'max_immobilization_rate': 3.65,
@@ -112,9 +113,11 @@ Ctransfer = {'ECM':0.0,'AM':0.0} # Initialize C tranfer from plants to symbiont 
 theta = 0.5  # fraction of saturation
 
 spinuptimes = numpy.arange(0, 2500,
-                     10)  # Time steps for model spinup as spinning up on monthly timestep would take too much time
-finaltimes = numpy.arange(0, 25,
-                     1/4)  # Time steps to evaluat, running on monthly timestep
+                     10)  # 10-year time steps for model spinup as spinning up on finer timestep would take too long
+timestep = 0.25  # Quarterly
+finaltimes = numpy.arange(0, 100 + timestep, timestep)  # Time steps to evaluat, running on quatily timestep
+plottimes = finaltimes
+timesteps = len(finaltimes)  # According to what is set for times in the above lines (numpy.arrange)
 # The ODE solver uses an adaptive timestep but will return these time points
 
 
@@ -129,7 +132,6 @@ ecmC = numpy.zeros((nplots, nclays, nclimates))
 amC = numpy.zeros((nplots, nclays, nclimates))
 microbC = numpy.zeros((nplots, nclays, nclimates))
 
-timesteps = len(finaltimes)  # According to what is set for times in the above lines (numpy.arrange)
 SAPC = numpy.zeros((timesteps, nplots, nclays, nclimates))
 ECMC = numpy.zeros((timesteps, nplots, nclays, nclimates))
 AMC = numpy.zeros((timesteps, nplots, nclays, nclimates))  # Document the mycorrhizal changes with time
@@ -143,351 +145,241 @@ PSlowC = numpy.zeros((timesteps, nplots, nclays, nclimates))
 PNecroC = numpy.zeros((timesteps, nplots, nclays, nclimates))
 InorgN = numpy.zeros((timesteps, nplots, nclays, nclimates))
 
-n = 0
-from CORPSE_deriv import sumCtypes
+output1 = numpy.zeros([5, nplots, nclays, nclimates])
+output2 = numpy.zeros([2, timesteps, nplots, nclays, nclimates])
 
-for plotnum in range(nplots):
-    for claynum in range(nclays):
-        for climnum in range(nclimates):
-            print(
-                'Sim {simnum:d} of {totsims:d}. %ECM = {ecmpct:1.1f}, %clay = {claypct:1.1f}, MAT = {mat:1.1f}'.format(
-                    simnum=n, totsims=nplots * nclays * nclimates, ecmpct=ECM_pct[plotnum], claypct=clay[claynum],
-                    mat=MAT[climnum]))
+def experiment(plotnum,claynum,climnum):
+    from CORPSE_deriv import sumCtypes
+    print(
+        'Sim {simnum:d} of {totsims:d}. %ECM = {ecmpct:1.1f}, %clay = {claypct:1.1f}, MAT = {mat:1.1f}'.format(
+            simnum=6*plotnum+3*claynum+climnum+1, totsims=120, ecmpct=ECM_pct[plotnum], claypct=clay[claynum],
+            mat=MAT[climnum]))
 
-            Ndemand = total_inputs/litter_CN_site
-            # Calculate plant Ndemand from N in litter production
-            # Assuming plant N_litter balances plant N_uptake and plant not relying on roots
-            # This will not be needed once the model is coupled with a plant model
+    Ndemand = total_inputs/litter_CN_site
+    # Calculate plant Ndemand from N in litter production
+    # Assuming plant N_litter balances plant N_uptake and plant not relying on roots
+    # This will not be needed once the model is coupled with a plant model
 
-            Ctransfer['ECM'] = total_inputs * myc_ratio_litter * ECM_pct[plotnum] / 100
-            Ctransfer['AM'] = total_inputs * myc_ratio_litter * (1-ECM_pct[plotnum] / 100)
+    Ctransfer['ECM'] = total_inputs * myc_ratio_litter * ECM_pct[plotnum] / 100
+    Ctransfer['AM'] = total_inputs * myc_ratio_litter * (1-ECM_pct[plotnum] / 100)
 
-            result = CORPSE_integrate.run_CORPSE_ODE(T=MAT[climnum], theta=theta, Ndemand=Ndemand,
-                                                     inputs=dict([(k, inputs[k][plotnum]) for k in inputs]),
-                                                     clay=clay[claynum], initvals=SOM_init, params=params,
-                                                     times=spinuptimes, runtype='Spinup')
-            result = CORPSE_integrate.run_CORPSE_ODE(T=MAT[climnum], theta=theta, Ndemand=Ndemand,
-                                                     inputs=dict([(k, inputs[k][plotnum]) for k in inputs]),
-                                                     clay=clay[claynum], initvals=result.iloc[-1], params=params,
-                                                     times=finaltimes, runtype='Final')
-            protC[plotnum, claynum, climnum] = sumCtypes(result.iloc[-1], 'p')
-            protN[plotnum, claynum, climnum] = sumCtypes(result.iloc[-1], 'p', 'N')
-            unprotC[plotnum, claynum, climnum] = sumCtypes(result.iloc[-1], 'u')
-            unprotN[plotnum, claynum, climnum] = sumCtypes(result.iloc[-1], 'u', 'N')
-            inorgN[plotnum, claynum, climnum] = result.iloc[-1]['inorganicN']
-            sapC[plotnum, claynum, climnum] = result.iloc[-1]['SAPC']
-            ecmC[plotnum, claynum, climnum] = result.iloc[-1]['ECMC']
-            amC[plotnum, claynum, climnum] = result.iloc[-1]['AMC']
-            microbC[plotnum, claynum, climnum] = result.iloc[-1]['SAPC']+result.iloc[-1]['ECMC']+result.iloc[-1]['AMC']
-            for timenum in range(timesteps):
-                SAPCarray = result['SAPC']
-                ECMCarray = result['ECMC']
-                AMCarray = result['AMC']
-                UnFastCCarray = result['uFastC']
-                UnSlowCCarray = result['uSlowC']
-                UnNecroCCarray = result['uNecroC']
-                UnprotectedCarray = sumCtypes(result.iloc[:], 'u', 'C')
-                PFastCCarray = result['pFastC']
-                PSlowCCarray = result['pSlowC']
-                PNecroCCarray = result['pNecroC']
-                ProtectedCarray = sumCtypes(result.iloc[:], 'p', 'C')
-                InorgNarray = result['inorganicN']
-                SAPC[timenum, plotnum, claynum, climnum] = SAPCarray[timenum]
-                ECMC[timenum, plotnum, claynum, climnum] = ECMCarray[timenum]
-                AMC[timenum, plotnum, claynum, climnum] = AMCarray[timenum]
-                UnFastC[timenum, plotnum, claynum, climnum] = UnFastCCarray[timenum]
-                UnSlowC[timenum, plotnum, claynum, climnum] = UnSlowCCarray[timenum]
-                UnNecroC[timenum, plotnum, claynum, climnum] = UnNecroCCarray[timenum]
-                UnprotectedC[timenum, plotnum, claynum, climnum] = UnprotectedCarray[timenum]
-                PFastC[timenum, plotnum, claynum, climnum] = PFastCCarray[timenum]
-                PSlowC[timenum, plotnum, claynum, climnum] = PSlowCCarray[timenum]
-                PNecroC[timenum, plotnum, claynum, climnum] = PNecroCCarray[timenum]
-                ProtectedC[timenum, plotnum, claynum, climnum] = ProtectedCarray[timenum]
-                InorgN[timenum, plotnum, claynum, climnum] = InorgNarray[timenum]
-            n += 1
+    result = CORPSE_integrate.run_CORPSE_ODE(T=MAT[climnum], theta=theta, Ndemand=Ndemand,
+                                             inputs=dict([(k, inputs[k][plotnum]) for k in inputs]),
+                                             clay=clay[claynum], initvals=SOM_init, params=params,
+                                             times=spinuptimes, runtype='Spinup')
+    result = CORPSE_integrate.run_CORPSE_ODE(T=MAT[climnum], theta=theta, Ndemand=Ndemand,
+                                             inputs=dict([(k, inputs[k][plotnum]) for k in inputs]),
+                                             clay=clay[claynum], initvals=result.iloc[-1], params=params,
+                                             times=finaltimes, runtype='Final')
+    protC[plotnum, claynum, climnum] = sumCtypes(result.iloc[-1], 'p')
+    protN[plotnum, claynum, climnum] = sumCtypes(result.iloc[-1], 'p', 'N')
+    unprotC[plotnum, claynum, climnum] = sumCtypes(result.iloc[-1], 'u')
+    unprotN[plotnum, claynum, climnum] = sumCtypes(result.iloc[-1], 'u', 'N')
+    inorgN[plotnum, claynum, climnum] = result.iloc[-1]['inorganicN']
+    sapC[plotnum, claynum, climnum] = result.iloc[-1]['SAPC']
+    ecmC[plotnum, claynum, climnum] = result.iloc[-1]['ECMC']
+    amC[plotnum, claynum, climnum] = result.iloc[-1]['AMC']
+    microbC[plotnum, claynum, climnum] = result.iloc[-1]['SAPC']+result.iloc[-1]['ECMC']+result.iloc[-1]['AMC']
+    SAPCarray = result['SAPC']
+    ECMCarray = result['ECMC']
+    AMCarray = result['AMC']
+    UnFastCCarray = result['uFastC']
+    UnSlowCCarray = result['uSlowC']
+    UnNecroCCarray = result['uNecroC']
+    UnprotectedCarray = sumCtypes(result.iloc[:], 'u', 'C')
+    PFastCCarray = result['pFastC']
+    PSlowCCarray = result['pSlowC']
+    PNecroCCarray = result['pNecroC']
+    ProtectedCarray = sumCtypes(result.iloc[:], 'p', 'C')
+    InorgNarray = result['inorganicN']
+    for timenum in range(timesteps):
+        filename = str(6 * plotnum + 3 * claynum + climnum + 1) + "_Quarterly_data.txt"
+        if timenum == 0:
+            f = open(filename, "w")
+        else:
+            f = open(filename, "a")
+        f.write("{:.6f} {:.6f} {:.6f} {:.6f} {:.6f}\n".format(InorgNarray[timenum], SAPCarray[timenum],
+                                                              UnprotectedCarray[timenum], ECMCarray[timenum],
+                                                              AMCarray[timenum]))
+    f.close()
+
+from joblib import Parallel, delayed
+output = Parallel(n_jobs=10)(
+    delayed(experiment)(plotnum, claynum, climnum) for plotnum in range(nplots) for claynum in range(nclays) for
+    climnum in range(nclimates))
 
 # Plot the results
 import matplotlib.pyplot as plt
 
-
-def totalCarbon(SOM):
-    from CORPSE_deriv import sumCtypes
-    return sumCtypes(SOM, 'u') + sumCtypes(SOM, 'p') + SOM['SAPC']
-
-
-def totalNitrogen(SOM):
-    from CORPSE_deriv import sumCtypes
-    return sumCtypes(SOM, 'u', 'N') + sumCtypes(SOM, 'p', 'N') + SOM['SAPN']
-
-SMALL_SIZE = 8
-# plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
-
-plt.figure('Mycorrhizal C&N for one sim', figsize=(4, 5.3));
-plt.clf()
-
-plt.subplot(221)
-plt.plot(finaltimes, SAPC[:, 0, 0, 1], label='SAP_C')
-plt.plot(finaltimes, ECMC[:, 0, 0, 1], label='ECM_C')
-plt.plot(finaltimes, AMC[:, 0, 0, 1], label='AM_C')
-
-plt.xlabel('Time (years)')
-plt.ylabel('Microbial carbon')
-plt.title('%ECM = 0 %AM = 100 %clay = 10',fontsize=SMALL_SIZE)
-plt.legend(fontsize='small')
-
-plt.subplot(222)
-plt.plot(finaltimes, SAPC[:, 19, 0, 1], label='SAP_C')
-plt.plot(finaltimes, ECMC[:, 19, 0, 1], label='ECM_C')
-plt.plot(finaltimes, AMC[:, 19, 0, 1], label='AM_C')
-
-plt.xlabel('Time (years)')
-plt.ylabel('Microbial carbon')
-plt.title('%ECM = 100 %AM = 0 %clay = 10',fontsize=SMALL_SIZE)
-plt.legend(fontsize='small')
-
-plt.subplot(223)
-plt.plot(finaltimes, SAPC[:, 0, 1, 1], label='SAP_C')
-plt.plot(finaltimes, ECMC[:, 0, 1, 1], label='ECM_C')
-plt.plot(finaltimes, AMC[:, 0, 1, 1], label='AM_C')
-
-plt.xlabel('Time (years)')
-plt.ylabel('Microbial carbon')
-plt.title('%ECM% = 0 %AM = 100 %clay = 70',fontsize=SMALL_SIZE)
-plt.legend(fontsize='small')
-
-plt.subplot(224)
-plt.plot(finaltimes, SAPC[:, 19, 1, 1], label='SAP_C')
-plt.plot(finaltimes, ECMC[:, 19, 1, 1], label='ECM_C')
-plt.plot(finaltimes, AMC[:, 19, 1, 1], label='AM_C')
-
-plt.xlabel('Time (years)')
-plt.ylabel('Microbial carbon')
-plt.title('%ECM = 100 %AM = 0 %clay = 70',fontsize=SMALL_SIZE)
-plt.legend(fontsize='small')
-
-plt.figure('C and N for one sim', figsize=(4, 5.3));
-plt.clf()
-
-plt.subplot(211)
-plt.plot(finaltimes, totalCarbon(result), c='k', label='Total C')
-plt.plot(finaltimes, result['pNecroC'], label='pNecroC')
-plt.plot(finaltimes, result['uSlowC'], label='uSlowC')
-
-# plt.xlabel('Time (days)')
-plt.ylabel('Total carbon')
-# plt.title('Total C stock')
-plt.legend(fontsize='small')
-
-plt.subplot(212)
-plt.plot(finaltimes, totalNitrogen(result), c='k', label='Total N')
-plt.plot(finaltimes, result['pNecroN'], label='pNecroN')
-plt.plot(finaltimes, result['uSlowN'], label='uSlowN')
-
-plt.xlabel('Time (years)')
-plt.ylabel('Total nitrogen')
-# plt.title('Total N')
-plt.legend(fontsize='small')
-
-protCfrac = protC / (protC + unprotC)
-protNfrac = protN / (protN + unprotN)
-
 norm = plt.Normalize(5, 20)
 cmap = plt.get_cmap('rainbow')
 markers = ['o', 's']
+SMALL_SIZE = 8
 
-plt.figure('Protected fraction of C and N', figsize=(6, 8));
-plt.clf()
-plt.subplot(211)
-for claynum in [0, 1]:
-    for climnum in range(len(MAT)):
-        plt.plot(ECM_pct, protCfrac[:, claynum, climnum], marker=markers[claynum], c=cmap(norm(MAT[climnum])),
-                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
-
-# plt.xlabel('ECM percent (%)')
-plt.ylabel('Protected C fraction')
-plt.legend(fontsize='small')
-plt.title('Protected SOM C fraction')
-
-plt.subplot(212)
-for claynum in [0, 1]:
-    for climnum in range(len(MAT)):
-        plt.plot(ECM_pct, protNfrac[:, claynum, climnum], marker=markers[claynum], c=cmap(norm(MAT[climnum])),
-                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
-
-plt.xlabel('ECM percent (%)')
-plt.ylabel('Protected N fraction')
-# plt.legend()
-plt.title('Protected SOM N fraction')
-
-plt.figure('CN stock and C:N', figsize=(6, 8));
-plt.clf()
-plt.subplot(311)
-for claynum in [0, 1]:
-    for climnum in range(len(MAT)):
-        plt.plot(ECM_pct, (protC + unprotC)[:, claynum, climnum], ms=4, marker=markers[claynum],
-                 c=cmap(norm(MAT[climnum])),
-                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
-        # plt.plot(ECM_pct, (protC)[:, claynum, climnum], ms=4, marker=markers[claynum], mfc='w',
-        #          c=cmap(norm(MAT[climnum])))
-
-# plt.xlabel('ECM percent (%)')
-plt.ylabel('Total C stock')
-# plt.legend()
-# plt.title('Total C stock')
-
-plt.subplot(312)
-for claynum in [0, 1]:
-    for climnum in range(len(MAT)):
-        plt.plot(ECM_pct, (protN + unprotN)[:, claynum, climnum], ms=4, marker=markers[claynum],
-                 c=cmap(norm(MAT[climnum])),
-                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
-
-# plt.xlabel('ECM percent (%)')
-plt.ylabel('Total N stock')
-# plt.legend()
-# plt.title('Total N stock')
-
-plt.subplot(313)
-for claynum in [0, 1]:
-    for climnum in range(len(MAT)):
-        plt.plot(ECM_pct, ((protC + unprotC) / (protN + unprotN))[:, claynum, climnum], ms=4, marker=markers[claynum],
-                 c=cmap(norm(MAT[climnum])),
-                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
-
-plt.xlabel('ECM percent (%)')
-plt.ylabel('C:N ratio')
-# plt.legend()
-# plt.title('C:N ratio')
-plt.legend(fontsize='small')
-
-plt.figure('Myco effect vs decomp rate');
-plt.clf()
-protCfracdiff = protCfrac[-1, :, :] - protCfrac[0, :, :]
-# plt.scatter(unprotC/total_inputs,protCfrac)
-for claynum in [0, 1]:
-    for climnum in range(len(MAT)):
-        plt.plot(unprotC[:, claynum, climnum] / total_inputs, protCfrac[:, claynum, climnum], marker=markers[claynum],
-                 c=cmap(norm(MAT[climnum])),
-                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
-
-plt.xlabel('Unprotected C turnover time (years)')
-plt.ylabel('Protected C fraction')
-
-plt.figure('Unprotected CN stock', figsize=(6, 8));
-plt.clf()
-plt.subplot(211)
-for claynum in [0, 1]:
-    for climnum in range(len(MAT)):
-        plt.plot(ECM_pct, (unprotC)[:, claynum, climnum], ms=4, marker=markers[claynum],
-                 c=cmap(norm(MAT[climnum])),
-                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
-        # plt.plot(ECM_pct, (protC)[:, claynum, climnum], ms=4, marker=markers[claynum], mfc='w',
-        #          c=cmap(norm(MAT[climnum])))
-
-# plt.xlabel('ECM percent (%)')
-plt.ylabel('Total unprotected C stock')
-# plt.legend()
-# plt.title('Total C stock')
-
-plt.subplot(212)
-for claynum in [0, 1]:
-    for climnum in range(len(MAT)):
-        plt.plot(ECM_pct, (unprotN)[:, claynum, climnum], ms=4, marker=markers[claynum],
-                 c=cmap(norm(MAT[climnum])),
-                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
-        # plt.plot(ECM_pct, (protN)[:, claynum, climnum], ms=4, marker=markers[claynum], mfc='w',
-        #          c=cmap(norm(MAT[climnum])))
-
-# plt.xlabel('ECM percent (%)')
-plt.ylabel('Total unprotected N stock')
-# plt.legend()
-# plt.title('Total C stock')
-
-plt.figure('Unprotected and protected C', figsize=(6, 8));
-plt.clf()
-plt.subplot(121)
-plt.plot(finaltimes, UnFastC[:, 19, 0, 1], label='Unprotected_FastC')
-plt.plot(finaltimes, UnSlowC[:, 19, 0, 1], label='Unprotected_SlowC')
-plt.plot(finaltimes, UnNecroC[:, 19, 0, 1], label='Unprotected_NecroC')
-plt.plot(finaltimes, UnprotectedC[:, 19, 0, 1], label='Unprotected_C')
-
-plt.xlabel('Time (years)')
-plt.ylabel('Unprotected soil carbon')
-plt.title('%ECM = 100 %AM = 0 %clay = 10',fontsize=SMALL_SIZE)
-plt.legend(fontsize='small')
-
-plt.subplot(122)
-plt.plot(finaltimes, PFastC[:, 19, 0, 1], label='Protected_FastC')
-plt.plot(finaltimes, PSlowC[:, 19, 0, 1], label='Protected_SlowC')
-plt.plot(finaltimes, PNecroC[:, 19, 0, 1], label='Protected_NecroC')
-plt.plot(finaltimes, ProtectedC[:, 19, 0, 1], label='Protected_C')
-
-plt.xlabel('Time (years)')
-plt.ylabel('Protected soil carbon')
-plt.title('%ECM = 100 %AM = 0 %clay = 10',fontsize=SMALL_SIZE)
-plt.legend(fontsize='small')
+plot_InorgN = numpy.zeros([nplots, nclays, nclimates])
+plot_SAPC = numpy.zeros([nplots, nclays, nclimates])
+plot_UnpC = numpy.zeros([nplots, nclays, nclimates])
+plot_ECMC = numpy.zeros([nplots, nclays, nclimates])
+plot_AMC = numpy.zeros([nplots, nclays, nclimates])
+plot_InorgN_all = numpy.zeros([timesteps, nplots, nclays, nclimates])
+plot_SAPC_all = numpy.zeros([timesteps, nplots, nclays, nclimates])
+plot_UnpC_all = numpy.zeros([timesteps, nplots, nclays, nclimates])
+plot_ECMC_all = numpy.zeros([timesteps, nplots, nclays, nclimates])
+plot_AMC_all = numpy.zeros([timesteps, nplots, nclays, nclimates])
+for plotnum in range(nplots):
+    for claynum in range(nclays):
+        for climnum in range(nclimates):
+            filename = "D:/Postdoc/CORPSE_Siya/" + str(
+                6 * plotnum + 3 * claynum + climnum + 1) + "_Quarterly_data.txt"
+            file = open(filename, "r")
+            datastring = file.read()
+            datalist = datastring.split("\n")
+            for i in range(0, timesteps, 1):
+                data = datalist[i].split(" ")
+                plot_InorgN_all[i, plotnum, claynum, climnum] = data[0]
+                plot_SAPC_all[i, plotnum, claynum, climnum] = data[1]
+                plot_UnpC_all[i, plotnum, claynum, climnum] = data[2]
+                plot_ECMC_all[i, plotnum, claynum, climnum] = data[3]
+                plot_AMC_all[i, plotnum, claynum, climnum] = data[4]
+            plot_InorgN[plotnum, claynum, climnum] = 0.25 * (plot_InorgN_all[-1, plotnum, claynum, climnum]
+                                                             + plot_InorgN_all[-2, plotnum, claynum, climnum]
+                                                             + plot_InorgN_all[-3, plotnum, claynum, climnum]
+                                                             + plot_InorgN_all[-4, plotnum, claynum, climnum])
+            plot_SAPC[plotnum, claynum, climnum] = 0.25 * (plot_SAPC_all[-1, plotnum, claynum, climnum]
+                                                           + plot_SAPC_all[-2, plotnum, claynum, climnum]
+                                                           + plot_SAPC_all[-3, plotnum, claynum, climnum]
+                                                           + plot_SAPC_all[-4, plotnum, claynum, climnum])
+            plot_UnpC[plotnum, claynum, climnum] = 0.25 * (plot_UnpC_all[-1, plotnum, claynum, climnum]
+                                                           + plot_UnpC_all[-2, plotnum, claynum, climnum]
+                                                           + plot_UnpC_all[-3, plotnum, claynum, climnum]
+                                                           + plot_UnpC_all[-4, plotnum, claynum, climnum])
+            plot_ECMC[plotnum, claynum, climnum] = 0.25 * (plot_ECMC_all[-1, plotnum, claynum, climnum]
+                                                           + plot_ECMC_all[-2, plotnum, claynum, climnum]
+                                                           + plot_ECMC_all[-3, plotnum, claynum, climnum]
+                                                           + plot_ECMC_all[-4, plotnum, claynum, climnum])
+            plot_AMC[plotnum, claynum, climnum] = 0.25 * (plot_AMC_all[-1, plotnum, claynum, climnum]
+                                                           + plot_AMC_all[-2, plotnum, claynum, climnum]
+                                                           + plot_AMC_all[-3, plotnum, claynum, climnum]
+                                                           + plot_AMC_all[-4, plotnum, claynum, climnum])
 
 plt.figure('Inorganic N', figsize=(6, 8));
 plt.clf()
-plt.subplot(121)
-plt.plot(finaltimes, InorgN[:, 19, 0, 1], label='Inorganic N')
-plt.xlabel('Time (years)')
-plt.ylabel('Inorganic N stock (kgN/m2)')
-plt.title('%ECM = 100 %AM = 0 %clay = 10',fontsize=SMALL_SIZE)
-plt.legend(fontsize='small')
-
-plt.subplot(122)
 for claynum in [0, 1]:
     for climnum in range(len(MAT)):
-        plt.plot(ECM_pct, inorgN[:, claynum, climnum], ms=4, marker=markers[claynum],
+        plt.plot(ECM_pct, plot_InorgN[:, claynum, climnum], ms=4, marker=markers[claynum],
                  c=cmap(norm(MAT[climnum])),
                  label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
-        # plt.plot(ECM_pct, (protN)[:, claynum, climnum], ms=4, marker=markers[claynum], mfc='w',
-        #          c=cmap(norm(MAT[climnum])))
 
 plt.xlabel('ECM percent (%)')
 plt.ylabel('Inorganic N stock (kgN/m2)')
-plt.ylim([0, 0.0003])
-plt.legend()
 
-plt.figure('Inorganic and microbial N', figsize=(6, 8));
+plt.figure('Microbial C', figsize=(6, 8));
 plt.clf()
-
-plt.subplot(221)
+ax = plt.subplot(221)
+ax.set_title("SAP")
 for claynum in [0, 1]:
     for climnum in range(len(MAT)):
-        plt.plot(ECM_pct, sapC[:, claynum, climnum], ms=4, marker=markers[claynum],
+        plt.plot(ECM_pct, plot_SAPC[:, claynum, climnum], ms=4, marker=markers[claynum],
+                 c=cmap(norm(MAT[climnum])),
+                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+        plt.xlabel('ECM percent (%)')
+        plt.ylabel('SAP C (KgC/m2)')
+ax = plt.subplot(222)
+ax.set_title("ECM")
+for claynum in [0, 1]:
+    for climnum in range(len(MAT)):
+        plt.plot(ECM_pct, plot_SAPC[:, claynum, climnum], ms=4, marker=markers[claynum],
+                 c=cmap(norm(MAT[climnum])),
+                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+        plt.xlabel('ECM percent (%)')
+        plt.ylabel('SAP C (KgC/m2)')
+ax = plt.subplot(223)
+ax.set_title("AM")
+for claynum in [0, 1]:
+    for climnum in range(len(MAT)):
+        plt.plot(ECM_pct, plot_SAPC[:, claynum, climnum], ms=4, marker=markers[claynum],
+                 c=cmap(norm(MAT[climnum])),
+                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+        plt.xlabel('ECM percent (%)')
+        plt.ylabel('SAP C (KgC/m2)')
+ax = plt.subplot(224)
+ax.set_title("Total microbes")
+for claynum in [0, 1]:
+    for climnum in range(len(MAT)):
+        plt.plot(ECM_pct, plot_SAPC[:, claynum, climnum]+plot_ECMC[:, claynum, climnum]+plot_AMC[:, claynum, climnum],
+                 ms=4, marker=markers[claynum],
                  c=cmap(norm(MAT[climnum])),
                  label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
         plt.xlabel('ECM percent (%)')
         plt.ylabel('SAP C (KgC/m2)')
 
-plt.subplot(222)
+plt.figure('Unprotected C', figsize=(6, 8));
+plt.clf()
 for claynum in [0, 1]:
     for climnum in range(len(MAT)):
-        plt.plot(ECM_pct, ecmC[:, claynum, climnum], ms=4, marker=markers[claynum],
+        plt.plot(ECM_pct, plot_UnpC[:, claynum, climnum], ms=4, marker=markers[claynum],
                  c=cmap(norm(MAT[climnum])),
                  label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
         plt.xlabel('ECM percent (%)')
-        plt.ylabel('ECM C (KgC/m2)')
+        plt.ylabel('Unprotected C (KgC/m2)')
 
-plt.subplot(223)
+plt.figure('Quarterly InorgN', figsize=(6, 8));
+plt.clf()
+ax = plt.subplot(121)
+ax.set_title("Quarterly InorgN_ECM50%")
+time = numpy.arange(0, 1.25, 0.25)
+plot_InorgN_quarterly = numpy.zeros(5)
 for claynum in [0, 1]:
     for climnum in range(len(MAT)):
-        plt.plot(ECM_pct, amC[:, claynum, climnum], ms=4, marker=markers[claynum],
+        for i in numpy.arange(-5, 0, 1):
+            plot_InorgN_quarterly[i + 5] = plot_InorgN_all[i, 10, claynum, climnum]
+        plt.plot(time, plot_InorgN_quarterly[:], ms=4, marker=markers[claynum],
                  c=cmap(norm(MAT[climnum])),
                  label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
-        plt.xlabel('ECM percent (%)')
-        plt.ylabel('AM C (KgC/m2)')
+        plt.xlabel('Time (year)')
+        plt.ylabel('InorgN (KgN/m2)')
 
-plt.subplot(224)
+ax = plt.subplot(122)
+ax.set_title("Quarterly InorgN_ECM100%")
+time = numpy.arange(0, 1.25, 0.25)
+plot_InorgN_quarterly = numpy.zeros(5)
 for claynum in [0, 1]:
     for climnum in range(len(MAT)):
-        plt.plot(ECM_pct, microbC[:, claynum, climnum], ms=4, marker=markers[claynum],
+        for i in numpy.arange(-5, 0, 1):
+            plot_InorgN_quarterly[i + 5] = plot_InorgN_all[i, 19, claynum, climnum]
+        plt.plot(time, plot_InorgN_quarterly[:], ms=4, marker=markers[claynum],
                  c=cmap(norm(MAT[climnum])),
                  label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
-        plt.xlabel('ECM percent (%)')
-        plt.ylabel('Total Microbial C (KgC/m2)')
-        plt.legend(fontsize='small')
+        plt.xlabel('Time (year)')
+        plt.ylabel('InorgN (KgN/m2)')
 
+plt.figure('Quarterly SAPC', figsize=(6, 8));
+plt.clf()
+ax = plt.subplot(121)
+ax.set_title("Quarterly SAPC_ECM50%")
+time = numpy.arange(0, 1.25, 0.25)
+plot_SAPC_quarterly = numpy.zeros(5)
+for claynum in [0, 1]:
+    for climnum in range(len(MAT)):
+        for i in numpy.arange(-5, 0, 1):
+            plot_SAPC_quarterly[i + 5] = plot_SAPC_all[i, 10, claynum, climnum]
+        plt.plot(time, plot_SAPC_quarterly[:], ms=4, marker=markers[claynum],
+                 c=cmap(norm(MAT[climnum])),
+                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+        plt.xlabel('Time (year)')
+        plt.ylabel('InorgN (KgN/m2)')
+
+ax = plt.subplot(122)
+ax.set_title("Quarterly SAPC_ECM100%")
+time = numpy.arange(0, 1.25, 0.25)
+plot_SAPC_quarterly = numpy.zeros(5)
+for claynum in [0, 1]:
+    for climnum in range(len(MAT)):
+        for i in numpy.arange(-5, 0, 1):
+            plot_SAPC_quarterly[i + 5] = plot_SAPC_all[i, 19, claynum, climnum]
+        plt.plot(time, plot_SAPC_quarterly[:], ms=4, marker=markers[claynum],
+                 c=cmap(norm(MAT[climnum])),
+                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+        plt.xlabel('Time (year)')
+        plt.ylabel('InorgN (KgN/m2)')
 plt.show()

@@ -5,12 +5,13 @@ import pandas
 # To run the model on monthly time step,
 # make the inputs vary with time as litter and MYC C transfer are mainly in the fall
 def timecoeff(time):
-    from numpy import zeros
+    from numpy import math
     timestep = time - int(time)
-    if timestep>=0.50 and timestep<0.75: # Set between 9/12 to 10/12 year (Sep to Oct)
-        timecoeff = 1.0
-    else:
-        timecoeff = 0.0
+    timecoeff = math.pow(math.sin(math.pi*timestep),2)*2.0
+    # if timestep>=0.50 and timestep<0.75: # Set between 9/12 to 10/12 year (Sep to Oct)
+    #     timecoeff = 1.0/0.25
+    # else:
+    #     timecoeff = 0.0
     return timecoeff
 
 fields=CORPSE_deriv.expected_pools
@@ -31,8 +32,13 @@ def fsolve_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,runtype):
         for n in range(len(fields)):
             SOM_dict[fields[n]]=asarray(SOM_list[n])
 
+    if runtype == 'Final':
+        Nlitter = Ndemand * timecoeff(times)
+    else:
+        Nlitter = Ndemand
+
     # Call the CORPSE model function that returns the derivative (with time) of each pool
-    deriv=CORPSE_deriv.CORPSE_deriv(SOM_dict,T,theta,Ndemand,params,claymod=CORPSE_deriv.prot_clay(clay)/CORPSE_deriv.prot_clay(20))
+    deriv=CORPSE_deriv.CORPSE_deriv(SOM_dict,T,theta,Nlitter,Ndemand,params,claymod=CORPSE_deriv.prot_clay(clay)/CORPSE_deriv.prot_clay(20))
 
     for pool in inputs.keys():
         if runtype == 'Final':
@@ -46,7 +52,6 @@ def fsolve_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,runtype):
         vals=[deriv[f][0] for f in fields]+[deriv[f][1] for f in fields]
     else:
         vals=concatenate([deriv[f] for f in fields])
-
     return vals
 
 # The ordinary differential equation (ODE) integrating function also wants to send the current time to the function it's integrating
