@@ -426,7 +426,7 @@ for plotnum in range(len(ECM_pct)):
             ax = plt.subplot(int("1"+str(nclimates)+str(climnum+1)))
             ax.set_title(str(MAT[climnum])+"°C")
             for i in numpy.arange(-5, 0, 1):
-                plot_Nsource_quarterly[i + 5] = plot_Nsource_all[i, plotnum, claynum, climnum]
+                plot_Nsource_quarterly[i + 5] = 100*plot_Nsource_all[i, plotnum, claynum, climnum]
             plt.plot(time, plot_Nsource_quarterly[:], ms=4, marker=markers[claynum],
                      c=cmapECM(normECM(ECM_pct[plotnum])),
                      label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
@@ -444,7 +444,7 @@ for plotnum in range(len(ECM_pct)):
             ax = plt.subplot(int("1"+str(nclimates)+str(climnum+1)))
             ax.set_title(str(MAT[climnum])+"°C")
             for i in numpy.arange(-5, 0, 1):
-                plot_Nlimit_quarterly[i + 5] = 1-plot_Nlimit_all[i, plotnum, claynum, climnum]
+                plot_Nlimit_quarterly[i + 5] = 100*(1-plot_Nlimit_all[i, plotnum, claynum, climnum])
             plt.plot(time, plot_Nlimit_quarterly[:], ms=4, marker=markers[claynum],
                      c=cmapECM(normECM(ECM_pct[plotnum])),
                      label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
