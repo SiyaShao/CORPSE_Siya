@@ -31,7 +31,8 @@ SOM_init = {'uFastC': 0.1,
             'Int_AMC': 0.0,
             'Int_N': 0.0, # Not splitting intermediate N pool between ECM and AM for now
             'NfromNecro': 0.0,
-            'NfromSOM': 0.0}
+            'NfromSOM': 0.0,
+            'Nlimit': 0.0}
 
 # Set model parameters
 # Note that carbon types have names, in contrast to previous version
@@ -186,17 +187,19 @@ def experiment(plotnum,claynum,climnum):
     TotNarray = sumCtypes(result.iloc[:], 'u', 'N') + sumCtypes(result.iloc[:], 'p', 'N')
     NfromNecroarray = result['NfromNecro']
     NfromSOMarray = result['NfromSOM']
+    Nlimitarray = result['Nlimit']
     for timenum in range(timesteps):
         filename = str(6 * plotnum + 3 * claynum + climnum + 1) + "_Quarterly_data.txt"
         if timenum == 0:
             f = open(filename, "w")
         else:
             f = open(filename, "a")
-        f.write("{:.6f} {:.6f} {:.6f} {:.6f} {:.6f} {:.6f} {:.6f} {:.6f}\n".format(InorgNarray[timenum], SAPCarray[timenum],
+        f.write("{:.6f} {:.6f} {:.6f} {:.6f} {:.6f} {:.6f} {:.6f} {:.6f} {:.6f}\n".format(InorgNarray[timenum],
+                                                                                          SAPCarray[timenum],
                                                                             UnprotectedCarray[timenum], ECMCarray[timenum],
                                                                             AMCarray[timenum],
                                                                             TotNarray[timenum], NfromNecroarray[timenum],
-                                                                            NfromSOMarray[timenum]))
+                                                                            NfromSOMarray[timenum],Nlimitarray[timenum]))
     f.close()
 
 from joblib import Parallel, delayed
@@ -223,6 +226,8 @@ plot_TotN = numpy.zeros([nplots, nclays, nclimates])
 plot_NfromNecro = numpy.zeros([nplots, nclays, nclimates])
 plot_NfromSOM = numpy.zeros([nplots, nclays, nclimates])
 plot_Nsource = numpy.zeros([nplots, nclays, nclimates])
+plot_Nlimit = numpy.zeros([nplots, nclays, nclimates])
+
 plot_InorgN_all = numpy.zeros([timesteps, nplots, nclays, nclimates])
 plot_SAPC_all = numpy.zeros([timesteps, nplots, nclays, nclimates])
 plot_UnpC_all = numpy.zeros([timesteps, nplots, nclays, nclimates])
@@ -232,6 +237,8 @@ plot_TotN_all = numpy.zeros([timesteps, nplots, nclays, nclimates])
 plot_NfromNecro_all = numpy.zeros([timesteps, nplots, nclays, nclimates])
 plot_NfromSOM_all = numpy.zeros([timesteps, nplots, nclays, nclimates])
 plot_Nsource_all = numpy.zeros([timesteps, nplots, nclays, nclimates])
+plot_Nlimit_all = numpy.zeros([timesteps, nplots, nclays, nclimates])
+plot_Nlimit_acc = numpy.zeros([timesteps, nplots, nclays, nclimates])
 for plotnum in range(nplots):
     for claynum in range(nclays):
         for climnum in range(nclimates):
@@ -255,6 +262,13 @@ for plotnum in range(nplots):
                 else:
                     plot_Nsource_all[i, plotnum, claynum, climnum] = \
                         (float(data[6])-plot_NfromNecro_all[i-1, plotnum, claynum, climnum])/(float(data[7])-plot_NfromSOM_all[i-1, plotnum, claynum, climnum])
+                plot_Nlimit_acc[i, plotnum, claynum, climnum] = data[8]
+                if i==0:
+                    plot_Nlimit_all[i, plotnum, claynum, climnum] = 1.0
+                else:
+                    plot_Nlimit_all[i, plotnum, claynum, climnum] = 1/timestep * \
+                         (float(data[8])-plot_Nlimit_acc[i-1, plotnum, claynum, climnum])
+
 
             plot_InorgN[plotnum, claynum, climnum] = 0.0
             for a in range(4):
@@ -416,8 +430,25 @@ for plotnum in range(len(ECM_pct)):
             plt.plot(time, plot_Nsource_quarterly[:], ms=4, marker=markers[claynum],
                      c=cmapECM(normECM(ECM_pct[plotnum])),
                      label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
-            print(norm(ECM_pct[plotnum]),plotnum)
             plt.xlabel('Time (year)')
             if climnum == 0:
                 plt.ylabel('SAP N sources from Necromass (%)')
+
+plt.figure('Quarterly SAP N limit status', figsize=(6, 8));
+plt.clf()
+time = numpy.arange(0, 1.25, 0.25)
+plot_Nlimit_quarterly = numpy.zeros(5)
+for plotnum in range(len(ECM_pct)):
+    for claynum in range(len(clay)):
+        for climnum in range(len(MAT)):
+            ax = plt.subplot(int("1"+str(nclimates)+str(climnum+1)))
+            ax.set_title(str(MAT[climnum])+"°C")
+            for i in numpy.arange(-5, 0, 1):
+                plot_Nlimit_quarterly[i + 5] = 1-plot_Nlimit_all[i, plotnum, claynum, climnum]
+            plt.plot(time, plot_Nlimit_quarterly[:], ms=4, marker=markers[claynum],
+                     c=cmapECM(normECM(ECM_pct[plotnum])),
+                     label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+            plt.xlabel('Time (year)')
+            if climnum == 0:
+                plt.ylabel('SAP N limit status (%)')
 plt.show()
