@@ -40,7 +40,7 @@ expected_pools = ['u'+t+'C' for t in chem_types]+\
                  [mt+'C' for mt in mic_types]   +\
                  [mt+'N' for mt in mic_types]   +\
                  ['CO2','inorganicN']           +\
-                 ['Int_ECMC', 'Int_AMC', 'Int_N']
+                 ['Int_ECMC', 'Int_AMC', 'Int_N' , 'NfromNecro', 'NfromSOM']
 #                 ['livingMicrobeC','livingMicrobeN','CO2','inorganicN',]
 
 
@@ -243,6 +243,9 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,params,claymod=1.0):
     derivs['Int_ECMC'] = atleast_1d(-SOM['Int_ECMC'])
     derivs['Int_AMC'] = atleast_1d(-SOM['Int_AMC'])
     derivs['Int_N'] = atleast_1d(Ntransfer-Nlitter)
+
+    derivs['NfromNecro'] = atleast_1d(decomp['NecroN']*params['nup']['Necro'])
+    derivs['NfromSOM'] = atleast_1d(nitrogen_supply['SAP'])
 
     return derivs
 
