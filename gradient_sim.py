@@ -68,6 +68,7 @@ params = {
     'kc_scavenging_IN': {'SAP':0.001,'ECM':0.001,'AM':0.001},
     # kgN/m3, AM value is from Sulman et al., (2019), assumed to be the same for other microbes
     'Ea_inorgN': 37e3,  # (kJ/mol) Activation energy for immobilization of inorganic N from Sulman et al., (2019)
+    'Ea_turnover': 20e3, # (kJ/mol) Activation energy for microbial turnover from Wang et al., (2013)
     'depth': 0.1, # 10cm, assumed for now.
     'iN_loss_rate': 10.0, # Loss rate from inorganic N pool (year-1). >1 since it takes much less than a year for it to be removed
     'N_deposition': 0.001,  # 1.0gN/m2/yr
@@ -152,7 +153,7 @@ def experiment(plotnum,claynum,climnum):
     from CORPSE_deriv import sumCtypes
     print(
         'Sim {simnum:d} of {totsims:d}. %ECM = {ecmpct:1.1f}, %clay = {claypct:1.1f}, MAT = {mat:1.1f}'.format(
-            simnum=6*plotnum+3*claynum+climnum+1, totsims=nplots*nclays*nclimates, ecmpct=ECM_pct[plotnum], claypct=clay[claynum],
+            simnum=nclimates*nclays*plotnum+nclimates*claynum+climnum+1, totsims=nplots*nclays*nclimates, ecmpct=ECM_pct[plotnum], claypct=clay[claynum],
             mat=MAT[climnum]))
 
     Ndemand = total_inputs/litter_CN_site
@@ -189,7 +190,7 @@ def experiment(plotnum,claynum,climnum):
     NfromSOMarray = result['NfromSOM']
     Nlimitarray = result['Nlimit']
     for timenum in range(timesteps):
-        filename = str(6 * plotnum + 3 * claynum + climnum + 1) + "_Quarterly_data.txt"
+        filename = str(nclimates*nclays*plotnum+nclimates*claynum + climnum + 1) + "_Quarterly_data.txt"
         if timenum == 0:
             f = open(filename, "w")
         else:
@@ -242,8 +243,8 @@ plot_Nlimit_acc = numpy.zeros([timesteps, nplots, nclays, nclimates])
 for plotnum in range(nplots):
     for claynum in range(nclays):
         for climnum in range(nclimates):
-            filename = "D:/Postdoc/CORPSE_Siya/" + str(
-                6 * plotnum + 3 * claynum + climnum + 1) + "_Quarterly_data.txt"
+            filename = "/Users/f0068s6/PycharmProjects/CORPSE_Siya/" + str(
+                nclimates*nclays*plotnum + nclimates*claynum + climnum + 1) + "_Quarterly_data.txt"
             file = open(filename, "r")
             datastring = file.read()
             datalist = datastring.split("\n")
@@ -271,29 +272,29 @@ for plotnum in range(nplots):
 
 
             plot_InorgN[plotnum, claynum, climnum] = 0.0
-            for a in range(4):
-                plot_InorgN[plotnum, claynum, climnum] += 0.25 * (plot_InorgN_all[-4 + a, plotnum, claynum, climnum])
+            for a in range(int(1/timestep)):
+                plot_InorgN[plotnum, claynum, climnum] += timestep * (plot_InorgN_all[-int(1/timestep) + a, plotnum, claynum, climnum])
             plot_SAPC[plotnum, claynum, climnum] = 0.0
-            for a in range(4):
-                plot_SAPC[plotnum, claynum, climnum] += 0.25 * (plot_SAPC_all[-4 + a, plotnum, claynum, climnum])
+            for a in range(int(1/timestep)):
+                plot_SAPC[plotnum, claynum, climnum] += timestep * (plot_SAPC_all[-int(1/timestep) + a, plotnum, claynum, climnum])
             plot_UnpC[plotnum, claynum, climnum] = 0.0
-            for a in range(4):
-                plot_UnpC[plotnum, claynum, climnum] += 0.25 * (plot_UnpC_all[-4 + a, plotnum, claynum, climnum])
+            for a in range(int(1/timestep)):
+                plot_UnpC[plotnum, claynum, climnum] += timestep * (plot_UnpC_all[-int(1/timestep) + a, plotnum, claynum, climnum])
             plot_ECMC[plotnum, claynum, climnum] = 0.0
-            for a in range(4):
-                plot_ECMC[plotnum, claynum, climnum] += 0.25 * (plot_ECMC_all[-4 + a, plotnum, claynum, climnum])
+            for a in range(int(1/timestep)):
+                plot_ECMC[plotnum, claynum, climnum] += timestep * (plot_ECMC_all[-int(1/timestep) + a, plotnum, claynum, climnum])
             plot_AMC[plotnum, claynum, climnum] = 0.0
-            for a in range(4):
-                plot_AMC[plotnum, claynum, climnum] += 0.25 * (plot_AMC_all[-4 + a, plotnum, claynum, climnum])
+            for a in range(int(1/timestep)):
+                plot_AMC[plotnum, claynum, climnum] += timestep * (plot_AMC_all[-int(1/timestep) + a, plotnum, claynum, climnum])
             plot_TotN[plotnum, claynum, climnum] = 0.0
-            for a in range(4):
-                plot_TotN[plotnum, claynum, climnum] += 0.25 * (plot_TotN_all[-4 + a, plotnum, claynum, climnum])
+            for a in range(int(1/timestep)):
+                plot_TotN[plotnum, claynum, climnum] += timestep * (plot_TotN_all[-int(1/timestep) + a, plotnum, claynum, climnum])
             plot_NfromNecro[plotnum, claynum, climnum] = 0.0
-            for a in range(4):
-                plot_NfromNecro[plotnum, claynum, climnum] += 0.25 * (plot_NfromNecro_all[-4 + a, plotnum, claynum, climnum])
+            for a in range(int(1/timestep)):
+                plot_NfromNecro[plotnum, claynum, climnum] += timestep * (plot_NfromNecro_all[-int(1/timestep) + a, plotnum, claynum, climnum])
             plot_NfromSOM[plotnum, claynum, climnum] = 0.0
-            for a in range(4):
-                plot_NfromSOM[plotnum, claynum, climnum] += 0.25 * (plot_NfromSOM_all[-4 + a, plotnum, claynum, climnum])
+            for a in range(int(1/timestep)):
+                plot_NfromSOM[plotnum, claynum, climnum] += timestep * (plot_NfromSOM_all[-int(1/timestep) + a, plotnum, claynum, climnum])
 
 plt.figure('Inorganic N', figsize=(6, 8));
 plt.clf()
@@ -382,15 +383,15 @@ for plotnum in range(len(ECM_pct)):
 
 plt.figure('Quarterly InorgN', figsize=(6, 8));
 plt.clf()
-time = numpy.arange(0, 1.25, 0.25)
-plot_InorgN_quarterly = numpy.zeros(5)
+time = numpy.arange(0, 1+timestep, timestep)
+plot_InorgN_quarterly = numpy.zeros(1+int(1/timestep))
 for plotnum in range(len(ECM_pct)):
     for claynum in range(len(clay)):
         for climnum in range(len(MAT)):
             ax = plt.subplot(int("1"+str(nclimates)+str(climnum+1)))
             ax.set_title(str(MAT[climnum])+"°C")
-            for i in numpy.arange(-5, 0, 1):
-                plot_InorgN_quarterly[i + 5] = plot_InorgN_all[i, plotnum, claynum, climnum]
+            for i in numpy.arange(-(1+int(1/timestep)), 0, 1):
+                plot_InorgN_quarterly[i + 1+int(1/timestep)] = plot_InorgN_all[i, plotnum, claynum, climnum]
             plt.plot(time, plot_InorgN_quarterly[:], ms=4, marker=markers[claynum],
                      c=cmapECM(normECM(ECM_pct[plotnum])),
                      label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
@@ -400,15 +401,15 @@ for plotnum in range(len(ECM_pct)):
 
 plt.figure('Quarterly SAPC', figsize=(6, 8));
 plt.clf()
-time = numpy.arange(0, 1.25, 0.25)
-plot_SAPC_quarterly = numpy.zeros(5)
+time = numpy.arange(0, 1+timestep, timestep)
+plot_SAPC_quarterly = numpy.zeros(1+int(1/timestep))
 for plotnum in range(len(ECM_pct)):
     for claynum in range(len(clay)):
         for climnum in range(len(MAT)):
             ax = plt.subplot(int("1"+str(nclimates)+str(climnum+1)))
             ax.set_title(str(MAT[climnum])+"°C")
-            for i in numpy.arange(-5, 0, 1):
-                plot_SAPC_quarterly[i + 5] = plot_SAPC_all[i, plotnum, claynum, climnum]
+            for i in numpy.arange(-(1+int(1/timestep)), 0, 1):
+                plot_SAPC_quarterly[i + 1+int(1/timestep)] = plot_SAPC_all[i, plotnum, claynum, climnum]
             plt.plot(time, plot_SAPC_quarterly[:], ms=4, marker=markers[claynum],
                      c=cmapECM(normECM(ECM_pct[plotnum])),
                      label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
@@ -418,15 +419,15 @@ for plotnum in range(len(ECM_pct)):
 
 plt.figure('Quarterly SAP N sources from Necromass', figsize=(6, 8));
 plt.clf()
-time = numpy.arange(0, 1.25, 0.25)
-plot_Nsource_quarterly = numpy.zeros(5)
+time = numpy.arange(0, 1+timestep, timestep)
+plot_Nsource_quarterly = numpy.zeros((1+int(1/timestep)))
 for plotnum in range(len(ECM_pct)):
     for claynum in range(len(clay)):
         for climnum in range(len(MAT)):
             ax = plt.subplot(int("1"+str(nclimates)+str(climnum+1)))
             ax.set_title(str(MAT[climnum])+"°C")
-            for i in numpy.arange(-5, 0, 1):
-                plot_Nsource_quarterly[i + 5] = 100*plot_Nsource_all[i, plotnum, claynum, climnum]
+            for i in numpy.arange(-(1+int(1/timestep)), 0, 1):
+                plot_Nsource_quarterly[i + 1+int(1/timestep)] = 100*plot_Nsource_all[i, plotnum, claynum, climnum]
             plt.plot(time, plot_Nsource_quarterly[:], ms=4, marker=markers[claynum],
                      c=cmapECM(normECM(ECM_pct[plotnum])),
                      label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
@@ -436,15 +437,15 @@ for plotnum in range(len(ECM_pct)):
 
 plt.figure('Quarterly SAP N limit status', figsize=(6, 8));
 plt.clf()
-time = numpy.arange(0, 1.25, 0.25)
-plot_Nlimit_quarterly = numpy.zeros(5)
+time = numpy.arange(0, 1+timestep, timestep)
+plot_Nlimit_quarterly = numpy.zeros(1+int(1/timestep))
 for plotnum in range(len(ECM_pct)):
     for claynum in range(len(clay)):
         for climnum in range(len(MAT)):
             ax = plt.subplot(int("1"+str(nclimates)+str(climnum+1)))
             ax.set_title(str(MAT[climnum])+"°C")
-            for i in numpy.arange(-5, 0, 1):
-                plot_Nlimit_quarterly[i + 5] = 100*(1-plot_Nlimit_all[i, plotnum, claynum, climnum])
+            for i in numpy.arange(-(1+int(1/timestep)), 0, 1):
+                plot_Nlimit_quarterly[i + 1+int(1/timestep)] = 100*(1-plot_Nlimit_all[i, plotnum, claynum, climnum])
             plt.plot(time, plot_Nlimit_quarterly[:], ms=4, marker=markers[claynum],
                      c=cmapECM(normECM(ECM_pct[plotnum])),
                      label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))

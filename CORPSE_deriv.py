@@ -116,13 +116,14 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,params,claymod=1.0):
     Nacq_simb_max = {'ECM':0.0,'AM':0.0}
     Nmining = NminingRate(SOM,T,theta,params)
     Nacq_simb_max['ECM'] = sum(Nmining.values())
-    Nacq_simb_max['AM'] = T_factor(T,params) * params['max_scavenging_rate']['AM'] * SOM['inorganicN'] / (
+    Nacq_simb_max['AM'] = T_factor(T,params,'InorgN') * params['max_scavenging_rate']['AM'] * SOM['inorganicN'] / (
             SOM['inorganicN'] + params['kc_scavenging_IN']['AM'] * params['depth']) \
                           * SOM['AMC'] / (SOM['AMC'] + params['kc_scavenging']['AM'] * params['depth'])
     # Calculate potential ECM N mining and AM N scavenging
 
     for mt in mic_types:
-        microbeTurnover[mt]=(SOM[mt+'C']-params['minMicrobeC']*(sumCtypes(SOM,'u')))/params['Tmic'][mt];   # kg/m2/yr
+        microbeTurnover[mt] = (SOM[mt+'C']-params['minMicrobeC']*(sumCtypes(SOM,'u')))/params['Tmic'][mt]\
+                              *T_factor(T,params,'Turnover');   # T sensitivity for microbial turnover
         if isinstance(microbeTurnover[mt],float):
            microbeTurnover[mt]=max(0.0,microbeTurnover[mt])
         else:
@@ -137,9 +138,13 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,params,claymod=1.0):
         # C and N available for microbial growth
         if mt=='SAP':
            for t in chem_types:
-               carbon_supply[mt]=carbon_supply[mt]+decomp[t+'C']*params['eup'][t]
+               if t=='Slow':
+                   CUE_SAP = 0.61 - 0.012 * (T - 273)  # From DeVêvre and Horwáth (2000)
+               else:
+                   CUE_SAP = 0.3512 - 0.0095 * (T - 273)  # Frey et al. (2013) (Phenols)
+               carbon_supply[mt]=carbon_supply[mt]+decomp[t+'C']*CUE_SAP
                nitrogen_supply[mt]=nitrogen_supply[mt]+decomp[t+'N']*params['nup'][t]
-               IMM_N_max = T_factor(T,params) * params['max_scavenging_rate']['SAP'] * SOM['inorganicN'] / (
+               IMM_N_max = T_factor(T,params,'InorgN') * params['max_scavenging_rate']['SAP'] * SOM['inorganicN'] / (
                        SOM['inorganicN'] + params['kc_scavenging_IN']['SAP'] * params['depth']) \
                                  * SOM['SAPC'] / (SOM['SAPC'] + params['kc_scavenging']['SAP'] * params['depth'])
         else:
@@ -314,15 +319,17 @@ def Vmax(T,params,process):
 
     return Vmax
 
-def T_factor(T,params):
+def T_factor(T,params,process):
 
     Tref=293.15;
     Rugas=8.314472;
 
     from numpy import exp
 
-    T_factor = exp(-params['Ea_inorgN'] * (1.0 / (Rugas * T) - 1.0 / (Rugas * Tref)))
-
+    if process == 'InorgN':
+        T_factor = exp(-params['Ea_inorgN'] * (1.0 / (Rugas * T) - 1.0 / (Rugas * Tref)))
+    elif process == 'Turnover':
+        T_factor = exp(-params['Ea_turnover'] * (1.0 / (Rugas * T) - 1.0 / (Rugas * Tref)))
     return T_factor
 
 def sumCtypes(SOM,prefix,suffix='C'):
