@@ -81,8 +81,8 @@ SOM_init['ECMN'] = SOM_init['ECMC'] / params['CN_microbe']['ECM']
 SOM_init['AMN'] = SOM_init['AMC'] / params['CN_microbe']['AM']
 
 # ECM gradient plots
-nplots = 20
-nclays = 2
+nplots = 5
+nclays = 1
 nclimates = 3
 # Environmental conditions
 # Gradient of mycorrhizal association
@@ -118,7 +118,7 @@ theta = 0.5  # fraction of saturation
 
 spinuptimes = numpy.arange(0, 2500,
                      10)  # 10-year time steps for model spinup as spinning up on finer timestep would take too long
-timestep = 0.25  # Quarterly
+timestep = 1/12.0  # Monthlyly
 finaltimes = numpy.arange(0, 100 + timestep, timestep)  # Time steps to evaluat, running on quatily timestep
 plottimes = finaltimes
 timesteps = len(finaltimes)  # According to what is set for times in the above lines (numpy.arrange)

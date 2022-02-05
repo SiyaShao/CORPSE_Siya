@@ -7,12 +7,21 @@ import pandas
 def timecoeff(time):
     from numpy import math
     timestep = time - int(time)
-    timecoeff = math.pow(math.sin(math.pi*timestep),2)*2.0
+    timecoeff = math.pow(math.sin(math.pi*timestep),2)*2.0  # (1.0+math.pow(math.sin(math.pi*timestep),2))/1.5
+    # math.pow(math.sin(math.pi*timestep),2)*2.0
     # if timestep>=0.50 and timestep<0.75: # Set between 9/12 to 10/12 year (Sep to Oct)
     #     timecoeff = 1.0/0.25
     # else:
     #     timecoeff = 0.0
     return timecoeff
+
+def Ttimecoeff(time,T):
+    from numpy import math
+    timestep = time - int(time)
+    Tem_diff = 30.0 # Hot climates have low annual T range (10 degrees), cold ones has large range (30 degrees)
+    Time_diff = 1.0 # 1.0 means litterfall peaks in fall while 0.5 means in spring and 0.25 means in winter
+    Ttimecoeff = T + Tem_diff/2.0*math.sin(2*math.pi*(timestep+Time_diff))
+    return Ttimecoeff
 
 fields=CORPSE_deriv.expected_pools
 
@@ -36,6 +45,9 @@ def fsolve_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,runtype):
         Nlitter = Ndemand * timecoeff(times)
     else:
         Nlitter = Ndemand
+
+    if runtype == 'Final':
+        T = Ttimecoeff(times, T)
 
     # Call the CORPSE model function that returns the derivative (with time) of each pool
     deriv=CORPSE_deriv.CORPSE_deriv(SOM_dict,T,theta,Nlitter,Ndemand,params,claymod=CORPSE_deriv.prot_clay(clay)/CORPSE_deriv.prot_clay(20))
