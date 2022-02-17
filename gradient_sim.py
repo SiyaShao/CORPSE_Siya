@@ -71,8 +71,9 @@ params = {
     'Ea_turnover': 20e3, # (kJ/mol) Activation energy for microbial turnover from Wang et al., (2013)
     'depth': 0.1, # 10cm, assumed for now.
     'iN_loss_rate': 10.0, # Loss rate from inorganic N pool (year-1). >1 since it takes much less than a year for it to be removed
-    'N_deposition': 0.001,  # 1.0gN/m2/yr
-    # Loss rate from inorganic N pool (year-1). >1 since it takes much less than a year for it to be removed
+    'N_deposition': 0.001,  # Annual nitrogen deposition 1.0gN/m2/yr
+    'kG_simb': 0.3, # Half-saturation of intermediate C pool for symbiotic growth (kg C m-2)'
+    'rgrowth_simb': 0.3, # Maximum growth rate of mycorrhizal fungi (kg C m-2 year-1)
     'Ohorizon_transfer_rates': {'uFastC': 0.1, 'uSlowC': 0.1, 'uNecroC': 0.1, 'uFastN': 0.1, 'uSlowN': 0.1,
                                 'uNecroN': 0.1}
 }
@@ -243,7 +244,7 @@ plot_Nlimit_acc = numpy.zeros([timesteps, nplots, nclays, nclimates])
 for plotnum in range(nplots):
     for claynum in range(nclays):
         for climnum in range(nclimates):
-            filename = "/Users/f0068s6/PycharmProjects/CORPSE_Siya/" + str(
+            filename = "D:/Postdoc/CORPSE_Siya/" + str(
                 nclimates*nclays*plotnum + nclimates*claynum + climnum + 1) + "_Quarterly_data.txt"
             file = open(filename, "r")
             datastring = file.read()

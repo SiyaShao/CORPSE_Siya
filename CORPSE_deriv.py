@@ -24,8 +24,12 @@ expected_params={	'vmaxref': 'Relative maximum enzymatic decomp rates (length 3)
             'kc_scavenging': 'Half-saturation constant of AM biomass concentration for AM N scavenging',
             'kc_scavenging_IN': 'Half-saturation constant of inorganic N concentration for AM N scavenging',
             'Ea_inorgN': 'Activation energy for immobilization of inorganic N',
-            'depth': 'Soil depth'
-            }
+            'Ea_turnover': 'Activation energy for microbial turnover',
+            'depth': 'Soil depth',
+            'iN_loss_rate': 'Loss rate from inorganic N pool',
+            'N_deposition': 'Annual nitrogen deposition',
+            'kG_simb': 'Half-saturation of intermediate C pool for symbiotic growth (kg C m-2)',
+            'rgrowth_simb': 'Maximum growth rate of mycorrhizal fungi'}
 
 chem_types = ['Fast','Slow','Necro']
 
@@ -121,6 +125,9 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,params,claymod=1.0):
                           * SOM['AMC'] / (SOM['AMC'] + params['kc_scavenging']['AM'] * params['depth'])
     # Calculate potential ECM N mining and AM N scavenging
 
+    Cacq_simb = {'ECM':0.0,'AM':0.0}
+    # Initialize the ECM C acquisition from the intermediate pools
+
     for mt in mic_types:
         microbeTurnover[mt] = (SOM[mt+'C']-params['minMicrobeC']*(sumCtypes(SOM,'u')))/params['Tmic'][mt]\
                               *T_factor(T,params,'Turnover');   # T sensitivity for microbial turnover
@@ -148,7 +155,8 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,params,claymod=1.0):
                        SOM['inorganicN'] + params['kc_scavenging_IN']['SAP'] * params['depth']) \
                                  * SOM['SAPC'] / (SOM['SAPC'] + params['kc_scavenging']['SAP'] * params['depth'])
         else:
-           carbon_supply[mt] += SOM['Int_'+mt+'C'] * params['eup_myc'][mt]
+           Cacq_simb[mt] = SOM['Int_'+mt+'C']/(SOM['Int_'+mt+'C']+params['kG_simb'])*params['rgrowth_simb']
+           carbon_supply[mt] += Cacq_simb[mt] * params['eup_myc'][mt]
            nitrogen_supply[mt] += Nacq_simb_max[mt]
            maintenance_resp[mt] += SOM['Int_' + mt + 'C'] * (1-params['eup_myc'][mt])
            IMM_N_max=atleast_1d(0.0)
@@ -249,8 +257,8 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,params,claymod=1.0):
     derivs['AMC'] = atleast_1d(dmicrobeC['AM'])
     derivs['AMN'] = atleast_1d(dmicrobeN['AM'])
 
-    derivs['Int_ECMC'] = atleast_1d(-SOM['Int_ECMC'])
-    derivs['Int_AMC'] = atleast_1d(-SOM['Int_AMC'])
+    derivs['Int_ECMC'] = atleast_1d(-Cacq_simb['ECM'])
+    derivs['Int_AMC'] = atleast_1d(-Cacq_simb['AM'])
     derivs['Int_N'] = atleast_1d(Ntransfer-Nlitter)
 
     derivs['NfromNecro'] = atleast_1d(decomp['NecroN']*params['nup']['Necro'])
