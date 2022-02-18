@@ -186,6 +186,7 @@ data = numpy.zeros([nplots, nclays, nclimates])  # Store the annual data of the 
 plot_InorgN, plot_SAPC, plot_UnpC, plot_ECMC, plot_AMC, plot_TotN, plot_NfromNecro, plot_NfromSOM, plot_Nsource, \
 plot_Nlimit = data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), \
               data.copy(), data.copy()
+plot_Ntransfer, plot_Ntransfer_ECM, plot_Ntransfer_AM = data.copy(), data.copy(), data.copy()
 
 for plotnum in range(nplots):
     for claynum in range(nclays):
@@ -242,6 +243,9 @@ for plotnum in range(nplots):
                 plot_TotN[plotnum, claynum, climnum] += timestep * (plot_TotN_all[-int(1/timestep) + a, plotnum, claynum, climnum])
                 plot_NfromNecro[plotnum, claynum, climnum] += timestep * (plot_NfromNecro_all[-int(1/timestep) + a, plotnum, claynum, climnum])
                 plot_NfromSOM[plotnum, claynum, climnum] += timestep * (plot_NfromSOM_all[-int(1/timestep) + a, plotnum, claynum, climnum])
+                plot_Ntransfer[plotnum, claynum, climnum] += timestep * (plot_Ntransfer_all[-int(1/timestep) + a, plotnum, claynum, climnum])
+                plot_Ntransfer_ECM[plotnum, claynum, climnum] += timestep * (plot_Ntransfer_ECM_all[-int(1/timestep) + a, plotnum, claynum, climnum])
+                plot_Ntransfer_AM[plotnum, claynum, climnum] += timestep * (plot_Ntransfer_AM_all[-int(1/timestep) + a, plotnum, claynum, climnum])
 
 plt.figure('Inorganic N', figsize=(6, 8));
 plt.clf()
@@ -491,5 +495,36 @@ for plotnum in range(len(ECM_pct)):
                      label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
             plt.xlabel('Time (year)')
             if climnum == 0:
-                plt.ylabel('SAP N sources from Necromass (%)')
+                plt.ylabel('Monthly intermediate N pool')
+
+plt.figure('N transfer from mycorrhizal fungi', figsize=(6, 8));
+plt.clf()
+ax = plt.subplot(131)
+ax.set_title("Annual mycorrhizal transfer")
+for claynum in range(len(clay)):
+    for climnum in range(len(MAT)):
+        plt.plot(ECM_pct, plot_Ntransfer[:, claynum, climnum], ms=4, marker=markers[claynum],
+                 c=cmap(norm(MAT[climnum])),
+                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+        plt.xlabel('ECM percent (%)')
+        plt.ylabel('Annual mycorrhizal transfer')
+ax = plt.subplot(132)
+ax.set_title("Annual ECM transfer")
+for claynum in range(len(clay)):
+    for climnum in range(len(MAT)):
+        plt.plot(ECM_pct, plot_Ntransfer_ECM[:, claynum, climnum], ms=4, marker=markers[claynum],
+                 c=cmap(norm(MAT[climnum])),
+                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+        plt.xlabel('ECM percent (%)')
+        plt.ylabel('Annual ECM transfer')
+ax = plt.subplot(133)
+ax.set_title("Annual AM transfer")
+for claynum in range(len(clay)):
+    for climnum in range(len(MAT)):
+        plt.plot(ECM_pct, plot_Ntransfer_AM[:, claynum, climnum], ms=4, marker=markers[claynum],
+                 c=cmap(norm(MAT[climnum])),
+                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+        plt.xlabel('ECM percent (%)')
+        plt.ylabel('Annual AM transfer')
+
 plt.show()
