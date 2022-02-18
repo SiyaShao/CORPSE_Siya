@@ -44,7 +44,8 @@ expected_pools = ['u'+t+'C' for t in chem_types]+\
                  [mt+'C' for mt in mic_types]   +\
                  [mt+'N' for mt in mic_types]   +\
                  ['CO2','inorganicN']           +\
-                 ['Int_ECMC', 'Int_AMC', 'Int_N' , 'NfromNecro', 'NfromSOM', 'Nlimit']
+                 ['Int_ECMC', 'Int_AMC', 'Int_N' , 'NfromNecro', 'NfromSOM', 'Nlimit']+\
+                 ['Ntransfer','Ntransfer_ECM','Ntransfer_AM']
 #                 ['livingMicrobeC','livingMicrobeN','CO2','inorganicN',]
 
 
@@ -168,10 +169,10 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,params,claymod=1.0):
         if mt == 'SAP':
             Nlimit_SAP = min(1.0,(nitrogen_supply[mt]+IMM_N_max)*params['CN_microbe'][mt]/carbon_supply[mt])
         if loc_Nlim==1:
-            if mt == 'AM':
-                 print('AMs are N limiting')
-            if mt == 'ECM':
-                 print('ECMs are N limiting')
+            # if mt == 'AM':
+            #      print('AMs are N limiting')
+            # if mt == 'ECM':
+            #      print('ECMs are N limiting')
             CN_imbalance_term[mt] = -IMM_N_max*loc_Nlim
             dmicrobeC[mt] = ((nitrogen_supply[mt]+IMM_N_max)*params['CN_microbe'][mt] - microbeTurnover[mt])*loc_Nlim
             dmicrobeN[mt] = dmicrobeC[mt]/params['CN_microbe'][mt]
@@ -191,6 +192,8 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,params,claymod=1.0):
     # If mycorrhizal fungi transfer too much N to plants (N_int pool exceeding 2*Ndemand), then mycorrhizal N acquisition
     # is decreased accordingly. This will not be needed once coupled to a plant growth model.
     Ntransfer = max(0.0,CN_imbalance_term['ECM']) + max(0.0,CN_imbalance_term['AM'])
+    Nmining_d = 0.0
+    Nscavenging_d = 0.0
     # if Ntransfer>Ndemand:
     #    Nmining_d = (Ntransfer-Ndemand)*max(0.0,CN_imbalance_term['ECM'])/Ntransfer
     #    for t in chem_types:
@@ -264,6 +267,10 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,params,claymod=1.0):
     derivs['NfromNecro'] = atleast_1d(decomp['NecroN']*params['nup']['Necro'])
     derivs['NfromSOM'] = atleast_1d(nitrogen_supply['SAP'])
     derivs['Nlimit'] = atleast_1d(Nlimit_SAP)
+
+    derivs['Ntransfer'] = atleast_1d(Ntransfer)
+    derivs['Ntransfer_ECM'] = atleast_1d(max(0.0,CN_imbalance_term['ECM'])-Nmining_d)
+    derivs['Ntransfer_AM'] = atleast_1d(max(0.0,CN_imbalance_term['AM'])-Nscavenging_d)
 
     return derivs
 
