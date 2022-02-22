@@ -45,7 +45,7 @@ expected_pools = ['u'+t+'C' for t in chem_types]+\
                  [mt+'N' for mt in mic_types]   +\
                  ['CO2','inorganicN']           +\
                  ['Int_ECMC', 'Int_AMC', 'Int_N' , 'NfromNecro', 'NfromSOM', 'Nlimit']+\
-                 ['Ntransfer','Ntransfer_ECM','Ntransfer_AM']
+                 ['Ntransfer','Ntransfer_ECM','Ntransfer_AM','Nrootuptake']
 #                 ['livingMicrobeC','livingMicrobeN','CO2','inorganicN',]
 
 
@@ -83,7 +83,7 @@ def check_params(params):
 
 
 from numpy import zeros,size,where,atleast_1d,zeros_like
-def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,params,claymod=1.0):
+def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Croot,params,claymod=1.0):
     '''Calculate rates of change for all CORPSE pools
        T: Temperature (K)
        theta: Soil water content (fraction of saturation)
@@ -189,6 +189,21 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,params,claymod=1.0):
             dmicrobeC[mt] = (carbon_supply[mt] - microbeTurnover[mt]) * loc_Clim
             dmicrobeN[mt] = dmicrobeC[mt] / params['CN_microbe'][mt]
 
+    # Root direct uptake
+    # Croot = 0.275  # Deciduous: Boreal 593g/m2, Temperate 687g/m2, Tropical 1013g/m2
+    #                # Evergreen: Boreal 515g/m2, Temperate 836g/m2, Tropical  724g/m2, from Finér et al.,(2011)
+    Density_root = 122 # From Fatichi et al.,(2019)
+    R_root = 0.00029 # Radius of root from Kou-Giesbrecht et al.,(2021)
+    RLD = Croot/Density_root/R_root/R_root # Calculate root length density from Fatichi et al.,(2019)
+    R_rhiz = 0.001 # Radius of rhizosphere from Sulman et al.,(2019)
+    VRL = RLD*0.5 # Volumetric root length, considering the whole root profile to be 0.5 meters
+    F_rhiz = 3.1415926*VRL*((R_rhiz+R_root)*(R_rhiz+R_root)-R_root*R_root)
+    rNH4 = 0.1 # Maximum root active N uptake rate (kgN/m3/yr) from Sulman et al.(2019)
+    km_nh4_root = 0.001 # Assumed to be the same as AM uptake for now
+
+    Nstress = (2*Ndemand-SOM['Int_N'])/(2*Ndemand)
+    Nuptake_root = Nstress*F_rhiz*rNH4*SOM['inorganicN'] / (SOM['inorganicN'] + km_nh4_root * params['depth'])
+
     # If mycorrhizal fungi transfer too much N to plants (N_int pool exceeding 2*Ndemand), then mycorrhizal N acquisition
     # is decreased accordingly. This will not be needed once coupled to a plant growth model.
     Ntransfer = max(0.0,CN_imbalance_term['ECM']) + max(0.0,CN_imbalance_term['AM'])
@@ -201,8 +216,8 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,params,claymod=1.0):
     #           Nmining[t+'N'] = Nmining[t+'N']*(nitrogen_supply['ECM']-Nmining_d)/nitrogen_supply['ECM']
     #    Nscavenging_d = Ntransfer-Ndemand-Nmining_d
     #    nitrogen_supply['AM'] += -Nscavenging_d
-    if SOM['Int_N']+Ntransfer-Nlitter>2*Ndemand:
-        Ntransfer_deduct = min(Ntransfer,(SOM['Int_N']+Ntransfer-Nlitter-2*Ndemand))
+    if SOM['Int_N']+Ntransfer+Nuptake_root-Nlitter>2*Ndemand:
+        Ntransfer_deduct = min(Ntransfer,(SOM['Int_N']+Ntransfer+Nuptake_root-Nlitter-2*Ndemand))
         Nmining_d = Ntransfer_deduct*max(0.0,CN_imbalance_term['ECM'])/Ntransfer
         for t in chem_types:
             if nitrogen_supply['ECM']>0.0:
@@ -262,7 +277,7 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,params,claymod=1.0):
 
     derivs['Int_ECMC'] = atleast_1d(-Cacq_simb['ECM'])
     derivs['Int_AMC'] = atleast_1d(-Cacq_simb['AM'])
-    derivs['Int_N'] = atleast_1d(Ntransfer-Nlitter)
+    derivs['Int_N'] = atleast_1d(Ntransfer+Nuptake_root-Nlitter)
 
     derivs['NfromNecro'] = atleast_1d(decomp['NecroN']*params['nup']['Necro'])
     derivs['NfromSOM'] = atleast_1d(nitrogen_supply['SAP'])
@@ -271,6 +286,7 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,params,claymod=1.0):
     derivs['Ntransfer'] = atleast_1d(Ntransfer)
     derivs['Ntransfer_ECM'] = atleast_1d(max(0.0,CN_imbalance_term['ECM'])-Nmining_d)
     derivs['Ntransfer_AM'] = atleast_1d(max(0.0,CN_imbalance_term['AM'])-Nscavenging_d)
+    derivs['Nrootuptake'] = atleast_1d(Nuptake_root)
 
     return derivs
 

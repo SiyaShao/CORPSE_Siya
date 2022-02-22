@@ -35,7 +35,8 @@ SOM_init = {'uFastC': 0.1,
             'Nlimit': 0.0,
             'Ntransfer': 0.0,
             'Ntransfer_ECM': 0.0,
-            'Ntransfer_AM': 0.0}
+            'Ntransfer_AM': 0.0,
+            'Nrootuptake': 0.0}
 
 # Set model parameters
 # Note that carbon types have names, in contrast to previous version
@@ -56,15 +57,15 @@ params = {
     'frac_N_turnover_min': 0.2,
     'frac_turnover_slow': {'SAP': 0.2, 'ECM': 0.2, 'AM': 0.2},
     'nup': {'Fast': 0.9, 'Slow': 0.6, 'Necro': 0.9},
-    'CN_microbe': {'SAP':8.0,'ECM':10.0,'AM':10.0},
+    'CN_microbe': {'SAP':8.0,'ECM':14.0,'AM':10.0},
     'max_immobilization_rate': 3.65,
     'substrate_diffusion_exp': 1.5,
     'new_resp_units': True,
     'eup_myc': {'ECM':0.5,'AM':0.5},
-    'max_mining_rate': {'Fast': 9.0, 'Slow': 1.0, 'Necro': 9.0},
+    'max_mining_rate': {'Fast': 1.0, 'Slow': 0.6, 'Necro': 1.0},
     # assumed to be more efficient with Slow and Necro pools, and less efficient with fast pools, compared to SAPs
     'kc_mining': 0.015, # g microbial biomass C/g substrate C, Sulman et al., (2019)
-    'max_scavenging_rate': {'SAP':1.0,'ECM':0.0,'AM':1.0},
+    'max_scavenging_rate': {'SAP':0.16,'ECM':0.0,'AM':0.2},
     # kgN/m2/year, AM value is from Sulman et al., (2019), assumed 80% AM capacity for SAP N immobilization, 0 for ECM
     'kc_scavenging': {'SAP':0.3,'ECM':0.3,'AM':0.3},
     # kgC/m3, AM value is from Sulman et al., (2019), assumed to be the same for other microbes
@@ -87,12 +88,14 @@ SOM_init['AMN'] = SOM_init['AMC'] / params['CN_microbe']['AM']
 # ECM gradient plots
 nplots = 5
 nclays = 1
-nclimates = 1
+nclimates = 3
 # Environmental conditions
 # Gradient of mycorrhizal association
 ECM_pct = numpy.linspace(0, 100, nplots)  # Percent ECM basal area
-MAT = numpy.linspace(12.5, 12.5, nclimates)  # degrees C
+MAT = numpy.linspace(5, 20, nclimates)  # degrees C
 clay = numpy.linspace(10, 70, nclays)  # percent clay
+Croot= [0.275, 0.375, 0.45] # Deciduous: Boreal 593g/m2, Temperate 687g/m2, Tropical 1013g/m2
+                   # Evergreen: Boreal 515g/m2, Temperate 836g/m2, Tropical  724g/m2, from Finér et al.,(2011)
 
 fastfrac_AM = 0.4
 fastfrac_ECM = 0.1
@@ -148,11 +151,11 @@ def experiment(plotnum,claynum,climnum):
     result = CORPSE_integrate.run_CORPSE_ODE(T=MAT[climnum], theta=theta, Ndemand=Ndemand,
                                              inputs=dict([(k, inputs[k][plotnum]) for k in inputs]),
                                              clay=clay[claynum], initvals=SOM_init, params=params,
-                                             times=spinuptimes, runtype='Spinup')
+                                             times=spinuptimes, Croot=Croot[climnum], runtype='Spinup')
     result = CORPSE_integrate.run_CORPSE_ODE(T=MAT[climnum], theta=theta, Ndemand=Ndemand,
                                              inputs=dict([(k, inputs[k][plotnum]) for k in inputs]),
                                              clay=clay[claynum], initvals=result.iloc[-1], params=params,
-                                             times=finaltimes, runtype='Final')
+                                             times=finaltimes, Croot=Croot[climnum], runtype='Final')
     for timenum in range(timesteps):
         filename = str(nclimates*nclays*plotnum+nclimates*claynum + climnum + 1)+'_Monthly_data.txt'
         result.to_csv(filename)
@@ -179,14 +182,18 @@ plot_NfromSOM_all, plot_Nsource_all, plot_Nlimit_all, plot_Nlimit_acc = data.cop
                                                                         data.copy(), data.copy(), data.copy(), \
                                                                         data.copy(), data.copy(), data.copy(), \
                                                                         data.copy(), data.copy()
-plot_IntN_all, plot_Ntransfer_all, plot_Ntransfer_ECM_all, plot_Ntransfer_AM_all, plot_Ntransfer_acc, \
-plot_Ntransfer_ECM_acc, plot_Ntransfer_AM_acc = data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), \
-                                                data.copy(), data.copy()
+plot_IntN_all, plot_Nrootuptake_all, plot_Ntransfer_all, plot_Ntransfer_ECM_all, plot_Ntransfer_AM_all, \
+plot_Nrootuptake_acc, plot_Ntransfer_acc, plot_Ntransfer_ECM_acc, plot_Ntransfer_AM_acc = data.copy(), data.copy(), \
+                                                                                          data.copy(), data.copy(), \
+                                                                                          data.copy(), data.copy(), \
+                                                                                          data.copy(),data.copy(), \
+                                                                                          data.copy()
 data = numpy.zeros([nplots, nclays, nclimates])  # Store the annual data of the last year
 plot_InorgN, plot_SAPC, plot_UnpC, plot_ECMC, plot_AMC, plot_TotN, plot_NfromNecro, plot_NfromSOM, plot_Nsource, \
 plot_Nlimit = data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), \
               data.copy(), data.copy()
-plot_Ntransfer, plot_Ntransfer_ECM, plot_Ntransfer_AM = data.copy(), data.copy(), data.copy()
+plot_Nrootuptake, plot_Ntransfer, plot_Ntransfer_ECM, plot_Ntransfer_AM = data.copy(), data.copy(), data.copy(), \
+                                                                          data.copy()
 
 for plotnum in range(nplots):
     for claynum in range(nclays):
@@ -208,6 +215,7 @@ for plotnum in range(nplots):
             plot_Ntransfer_acc[:, plotnum, claynum, climnum] = result['Ntransfer']
             plot_Ntransfer_ECM_acc[:, plotnum, claynum, climnum] = result['Ntransfer_ECM']
             plot_Ntransfer_AM_acc[:, plotnum, claynum, climnum] = result['Ntransfer_AM']
+            plot_Nrootuptake_acc[:, plotnum, claynum, climnum] = result['Nrootuptake']
 
             for i in range(0, timesteps, 1):
                 if i==0:
@@ -222,6 +230,7 @@ for plotnum in range(nplots):
                     plot_Ntransfer_all[i, plotnum, claynum, climnum] = plot_Ntransfer_acc[i, plotnum, claynum, climnum]
                     plot_Ntransfer_ECM_all[i, plotnum, claynum, climnum] = plot_Ntransfer_ECM_acc[i, plotnum, claynum, climnum]
                     plot_Ntransfer_AM_all[i, plotnum, claynum, climnum] = plot_Ntransfer_AM_acc[i, plotnum, claynum, climnum]
+                    plot_Nrootuptake_all[i, plotnum, claynum, climnum] = plot_Nrootuptake_acc[i, plotnum, claynum, climnum]
                 else:
                     plot_Nlimit_all[i, plotnum, claynum, climnum] = 1/timestep * \
                          (plot_Nlimit_acc[i, plotnum, claynum, climnum]-plot_Nlimit_acc[i-1, plotnum, claynum, climnum])
@@ -233,6 +242,9 @@ for plotnum in range(nplots):
                     plot_Ntransfer_AM_all[i, plotnum, claynum, climnum] = 1 / timestep * \
                                                                     (plot_Ntransfer_AM_acc[i, plotnum, claynum, climnum] -
                                                                      plot_Ntransfer_AM_acc[i - 1, plotnum, claynum, climnum])
+                    plot_Nrootuptake_all[i, plotnum, claynum, climnum] = 1 / timestep * \
+                                                                    (plot_Nrootuptake_acc[i, plotnum, claynum, climnum] -
+                                                                     plot_Nrootuptake_acc[i - 1, plotnum, claynum, climnum])
 
             for a in range(int(1/timestep)):
                 plot_InorgN[plotnum, claynum, climnum] += timestep * (plot_InorgN_all[-int(1/timestep) + a, plotnum, claynum, climnum])
@@ -246,6 +258,7 @@ for plotnum in range(nplots):
                 plot_Ntransfer[plotnum, claynum, climnum] += timestep * (plot_Ntransfer_all[-int(1/timestep) + a, plotnum, claynum, climnum])
                 plot_Ntransfer_ECM[plotnum, claynum, climnum] += timestep * (plot_Ntransfer_ECM_all[-int(1/timestep) + a, plotnum, claynum, climnum])
                 plot_Ntransfer_AM[plotnum, claynum, climnum] += timestep * (plot_Ntransfer_AM_all[-int(1/timestep) + a, plotnum, claynum, climnum])
+                plot_Nrootuptake[plotnum, claynum, climnum] += timestep * (plot_Nrootuptake_all[-int(1 / timestep) + a, plotnum, claynum, climnum])
 
 plt.figure('Inorganic N', figsize=(6, 8));
 plt.clf()
@@ -479,52 +492,56 @@ for plotnum in range(len(ECM_pct)):
             if climnum == 0:
                 plt.ylabel('AM N transfer')
 
-plt.figure('Monthly IntN', figsize=(6, 8));
-plt.clf()
-time = numpy.arange(0, 1+timestep, timestep)
-plot_IntN_Monthly = numpy.zeros((1+int(1/timestep)))
-for plotnum in range(len(ECM_pct)):
-    for claynum in range(len(clay)):
-        for climnum in range(len(MAT)):
-            ax = plt.subplot(int("1"+str(nclimates)+str(climnum+1)))
-            ax.set_title(str(MAT[climnum])+"°C")
-            for i in numpy.arange(-(1+int(1/timestep)), 0, 1):
-                plot_IntN_Monthly[i + 1+int(1/timestep)] = 100*plot_IntN_all[i, plotnum, claynum, climnum]
-            plt.plot(time, plot_IntN_Monthly[:], ms=4, marker=markers[claynum],
-                     c=cmapECM(normECM(ECM_pct[plotnum])),
-                     label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
-            plt.xlabel('Time (year)')
-            if climnum == 0:
-                plt.ylabel('Monthly intermediate N pool')
 
-plt.figure('N transfer from mycorrhizal fungi', figsize=(6, 8));
+plt.figure('N uptake', figsize=(6, 8));
 plt.clf()
-ax = plt.subplot(131)
+ax = plt.subplot(321)
 ax.set_title("Annual mycorrhizal transfer")
 for claynum in range(len(clay)):
     for climnum in range(len(MAT)):
         plt.plot(ECM_pct, plot_Ntransfer[:, claynum, climnum], ms=4, marker=markers[claynum],
                  c=cmap(norm(MAT[climnum])),
                  label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
-        plt.xlabel('ECM percent (%)')
+        # plt.xlabel('ECM percent (%)')
         plt.ylabel('Annual mycorrhizal transfer')
-ax = plt.subplot(132)
+ax = plt.subplot(322)
 ax.set_title("Annual ECM transfer")
 for claynum in range(len(clay)):
     for climnum in range(len(MAT)):
         plt.plot(ECM_pct, plot_Ntransfer_ECM[:, claynum, climnum], ms=4, marker=markers[claynum],
                  c=cmap(norm(MAT[climnum])),
                  label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
-        plt.xlabel('ECM percent (%)')
+        # plt.xlabel('ECM percent (%)')
         plt.ylabel('Annual ECM transfer')
-ax = plt.subplot(133)
+ax = plt.subplot(323)
 ax.set_title("Annual AM transfer")
 for claynum in range(len(clay)):
     for climnum in range(len(MAT)):
+        print(climnum, plot_Ntransfer_AM[:, claynum, climnum])
         plt.plot(ECM_pct, plot_Ntransfer_AM[:, claynum, climnum], ms=4, marker=markers[claynum],
                  c=cmap(norm(MAT[climnum])),
                  label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
-        plt.xlabel('ECM percent (%)')
+        # plt.xlabel('ECM percent (%)')
         plt.ylabel('Annual AM transfer')
+ax = plt.subplot(324)
+ax.set_title("Root N uptake")
+for claynum in range(len(clay)):
+    for climnum in range(len(MAT)):
+        print(climnum, plot_Nrootuptake[:, claynum, climnum])
+        plt.plot(ECM_pct, plot_Nrootuptake[:, claynum, climnum], ms=4, marker=markers[claynum],
+                 c=cmap(norm(MAT[climnum])),
+                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+        plt.xlabel('ECM percent (%)')
+        plt.ylabel('Root N uptake')
+ax = plt.subplot(325)
+ax.set_title("Total N uptake")
+for claynum in range(len(clay)):
+    for climnum in range(len(MAT)):
+        print(climnum,plot_Nrootuptake[:, claynum, climnum]+plot_Ntransfer[:, claynum, climnum])
+        plt.plot(ECM_pct, plot_Nrootuptake[:, claynum, climnum]+plot_Ntransfer[:, claynum, climnum], ms=4, marker=markers[claynum],
+                 c=cmap(norm(MAT[climnum])),
+                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+        plt.xlabel('ECM percent (%)')
+        plt.ylabel('Total N uptake')
 
 plt.show()
