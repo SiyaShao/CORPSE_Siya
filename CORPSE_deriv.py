@@ -83,7 +83,7 @@ def check_params(params):
 
 
 from numpy import zeros,size,where,atleast_1d,zeros_like
-def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Croot,params,claymod=1.0):
+def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,params,claymod=1.0):
     '''Calculate rates of change for all CORPSE pools
        T: Temperature (K)
        theta: Soil water content (fraction of saturation)
@@ -130,7 +130,7 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Croot,params,claymod=1.0):
     # Initialize the ECM C acquisition from the intermediate pools
 
     for mt in mic_types:
-        microbeTurnover[mt] = (SOM[mt+'C']-params['minMicrobeC']*(sumCtypes(SOM,'u')))/params['Tmic'][mt]\
+        microbeTurnover[mt] = (SOM[mt+'C']-params['minMicrobeC'][mt]*(sumCtypes(SOM,'u')))/params['Tmic'][mt]\
                               *T_factor(T,params,'Turnover');   # T sensitivity for microbial turnover
         if isinstance(microbeTurnover[mt],float):
            microbeTurnover[mt]=max(0.0,microbeTurnover[mt])
@@ -216,8 +216,8 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Croot,params,claymod=1.0):
     #           Nmining[t+'N'] = Nmining[t+'N']*(nitrogen_supply['ECM']-Nmining_d)/nitrogen_supply['ECM']
     #    Nscavenging_d = Ntransfer-Ndemand-Nmining_d
     #    nitrogen_supply['AM'] += -Nscavenging_d
-    if SOM['Int_N']+Ntransfer+Nuptake_root-Nlitter>2*Ndemand:
-        Ntransfer_deduct = min(Ntransfer,(SOM['Int_N']+Ntransfer+Nuptake_root-Nlitter-2*Ndemand))
+    if SOM['Int_N']+Ntransfer+Nuptake_root-Ndemand_Time>2*Ndemand:
+        Ntransfer_deduct = min(Ntransfer,(SOM['Int_N']+Ntransfer+Nuptake_root-Ndemand_Time-2*Ndemand))
         Nmining_d = Ntransfer_deduct*max(0.0,CN_imbalance_term['ECM'])/Ntransfer
         for t in chem_types:
             if nitrogen_supply['ECM']>0.0:
@@ -277,7 +277,7 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Croot,params,claymod=1.0):
 
     derivs['Int_ECMC'] = atleast_1d(-Cacq_simb['ECM'])
     derivs['Int_AMC'] = atleast_1d(-Cacq_simb['AM'])
-    derivs['Int_N'] = atleast_1d(Ntransfer+Nuptake_root-Nlitter)
+    derivs['Int_N'] = atleast_1d(Ntransfer+Nuptake_root-Ndemand_Time)
 
     derivs['NfromNecro'] = atleast_1d(decomp['NecroN']*params['nup']['Necro'])
     derivs['NfromSOM'] = atleast_1d(nitrogen_supply['SAP'])

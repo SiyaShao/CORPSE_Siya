@@ -23,6 +23,13 @@ def Ttimecoeff(time,T):
     Ttimecoeff = T + Tem_diff/2.0*math.sin(2*math.pi*(timestep+Time_diff))
     return Ttimecoeff
 
+def NPPtimecoeff(time):
+    from numpy import math
+    timestep = time - int(time)
+    NPPtimecoeff = math.pow(math.sin(math.pi*(timestep+0.25)),2)*2.0
+    # (1.0 + math.pow(math.sin(math.pi *(timestep+0.25)), 2)) / 1.5 # More even distribution
+    return NPPtimecoeff
+
 fields=CORPSE_deriv.expected_pools
 
 # This is a function that translates the CORPSE model pools to/from the format that the equation solver expects
@@ -47,10 +54,15 @@ def fsolve_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,Croot,runty
         Nlitter = Ndemand
 
     if runtype == 'Final':
+        Ndemand_Time = Ndemand * NPPtimecoeff(times)  # Ndemand should follow the NPP and be time-varying
+    else:
+        Ndemand_Time = Ndemand
+
+    if runtype == 'Final':
         T = Ttimecoeff(times, T)
 
     # Call the CORPSE model function that returns the derivative (with time) of each pool
-    deriv=CORPSE_deriv.CORPSE_deriv(SOM_dict,T,theta,Nlitter,Ndemand,Croot,params,claymod=CORPSE_deriv.prot_clay(clay)/CORPSE_deriv.prot_clay(20))
+    deriv=CORPSE_deriv.CORPSE_deriv(SOM_dict,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,params,claymod=CORPSE_deriv.prot_clay(clay)/CORPSE_deriv.prot_clay(20))
 
     for pool in inputs.keys():
         if runtype == 'Final':

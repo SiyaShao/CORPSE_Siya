@@ -47,7 +47,8 @@ params = {
     'kC': {'Fast': 0.01, 'Slow': 0.01, 'Necro': 0.01},  # Michaelis-Menton parameter
     'gas_diffusion_exp': 0.6,  # Determines suppression of decomp at high soil moisture
     'substrate_diffusion_exp': 1.5,  # Dimensionless exponent. Determines suppression of decomp at low soil moisture
-    'minMicrobeC': 1e-3,  # Minimum microbial biomass (fraction of total C)
+    'minMicrobeC': {'SAP':1e-3, 'ECM':1e-6, 'AM':1e-6},
+    # Minimum microbial biomass (fraction of total C), mycorrhizal fungi is set to be much lower
     'Tmic': {'SAP': 0.25, 'ECM': 1.0, 'AM': 0.25},  # Microbial lifetime (years)
     'et': {'SAP': 0.6, 'ECM': 0.6, 'AM': 0.6},  # Fraction of turnover not converted to CO2 (dimensionless)
     'eup': {'Fast': 0.6, 'Slow': 0.05, 'Necro': 0.6},  # Carbon uptake efficiency (dimensionless fraction)
@@ -73,7 +74,7 @@ params = {
     # kgN/m3, AM value is from Sulman et al., (2019), assumed to be the same for other microbes
     'Ea_inorgN': 37e3,  # (kJ/mol) Activation energy for immobilization of inorganic N from Sulman et al., (2019)
     'Ea_turnover': 20e3, # (kJ/mol) Activation energy for microbial turnover from Wang et al., (2013)
-    'depth': 0.1, # 10cm, assumed for now.
+    'depth': 0.15, # 15cm, assumed for now.
     'iN_loss_rate': 10.0, # Loss rate from inorganic N pool (year-1). >1 since it takes much less than a year for it to be removed
     'N_deposition': 0.001,  # Annual nitrogen deposition 1.0gN/m2/yr
     'kG_simb': 0.3, # Half-saturation of intermediate C pool for symbiotic growth (kg C m-2)'
@@ -125,7 +126,7 @@ theta = 0.5  # fraction of saturation
 
 spinuptimes = numpy.arange(0, 2500,
                      10)  # 10-year time steps for model spinup as spinning up on finer timestep would take too long
-timestep = 1/12.0  # Monthlyly
+timestep = 1/12.0  # Monthly
 finaltimes = numpy.arange(0, 100 + timestep, timestep)  # Time steps to evaluat, running on quatily timestep
 plottimes = finaltimes
 timesteps = len(finaltimes)  # According to what is set for times in the above lines (numpy.arrange)
@@ -363,23 +364,50 @@ for plotnum in range(len(ECM_pct)):
             if climnum == 0:
                 plt.ylabel('InorgN (KgN/m2)')
 
-plt.figure('Monthly SAPC', figsize=(6, 8));
+plt.figure('Monthly microbes', figsize=(6, 8));
 plt.clf()
+ax = plt.subplot(131)
+ax.set_title("Monthly SAP")
 time = numpy.arange(0, 1+timestep, timestep)
 plot_SAPC_Monthly = numpy.zeros(1+int(1/timestep))
 for plotnum in range(len(ECM_pct)):
     for claynum in range(len(clay)):
         for climnum in range(len(MAT)):
-            ax = plt.subplot(int("1"+str(nclimates)+str(climnum+1)))
-            ax.set_title(str(MAT[climnum])+"°C")
             for i in numpy.arange(-(1+int(1/timestep)), 0, 1):
                 plot_SAPC_Monthly[i + 1+int(1/timestep)] = plot_SAPC_all[i, plotnum, claynum, climnum]
             plt.plot(time, plot_SAPC_Monthly[:], ms=4, marker=markers[claynum],
                      c=cmapECM(normECM(ECM_pct[plotnum])),
                      label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
             plt.xlabel('Time (year)')
-            if climnum == 0:
-                plt.ylabel('SAP_C (KgC/m2)')
+            plt.ylabel('SAP_C (KgC/m2)')
+ax = plt.subplot(132)
+ax.set_title("Monthly ECMC")
+time = numpy.arange(0, 1+timestep, timestep)
+plot_ECMC_Monthly = numpy.zeros(1+int(1/timestep))
+for plotnum in range(len(ECM_pct)):
+    for claynum in range(len(clay)):
+        for climnum in range(len(MAT)):
+            for i in numpy.arange(-(1+int(1/timestep)), 0, 1):
+                plot_ECMC_Monthly[i + 1+int(1/timestep)] = plot_ECMC_all[i, plotnum, claynum, climnum]
+            plt.plot(time, plot_ECMC_Monthly[:], ms=4, marker=markers[claynum],
+                     c=cmapECM(normECM(ECM_pct[plotnum])),
+                     label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+            plt.xlabel('Time (year)')
+            plt.ylabel('ECM_C (KgC/m2)')
+ax = plt.subplot(133)
+ax.set_title("Monthly AM")
+time = numpy.arange(0, 1+timestep, timestep)
+plot_AMC_Monthly = numpy.zeros(1+int(1/timestep))
+for plotnum in range(len(ECM_pct)):
+    for claynum in range(len(clay)):
+        for climnum in range(len(MAT)):
+            for i in numpy.arange(-(1+int(1/timestep)), 0, 1):
+                plot_AMC_Monthly[i + 1+int(1/timestep)] = plot_AMC_all[i, plotnum, claynum, climnum]
+            plt.plot(time, plot_AMC_Monthly[:], ms=4, marker=markers[claynum],
+                     c=cmapECM(normECM(ECM_pct[plotnum])),
+                     label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+            plt.xlabel('Time (year)')
+            plt.ylabel('AM_C (KgC/m2)')
 
 # plt.figure('Monthly SAP N sources from Necromass', figsize=(6, 8));
 # plt.clf()
@@ -417,7 +445,25 @@ for plotnum in range(len(ECM_pct)):
 #             if climnum == 0:
 #                 plt.ylabel('SAP N limit status (%)')
 
-plt.figure('Monthly IntN', figsize=(6, 8));
+plt.figure('Monthly Intermediate N', figsize=(6, 8));
+plt.clf()
+time = numpy.arange(0, 1+timestep, timestep)
+plot_IntN_Monthly = numpy.zeros(1+int(1/timestep))
+for plotnum in range(len(ECM_pct)):
+    for claynum in range(len(clay)):
+        for climnum in range(len(MAT)):
+            ax = plt.subplot(int("1"+str(nclimates)+str(climnum+1)))
+            ax.set_title(str(MAT[climnum])+"°C")
+            for i in numpy.arange(-(1+int(1/timestep)), 0, 1):
+                plot_IntN_Monthly[i + 1+int(1/timestep)] = plot_IntN_all[i, plotnum, claynum, climnum]
+            plt.plot(time, plot_IntN_Monthly[:], ms=4, marker=markers[claynum],
+                     c=cmapECM(normECM(ECM_pct[plotnum])),
+                     label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+            plt.xlabel('Time (year)')
+            if climnum == 0:
+                plt.ylabel('Monthly Intermediate N')
+
+plt.figure('SAP N sources from Necromass (%)', figsize=(6, 8));
 plt.clf()
 time = numpy.arange(0, 1+timestep, timestep)
 plot_Nsource_Monthly = numpy.zeros((1+int(1/timestep)))
@@ -438,7 +484,7 @@ for plotnum in range(len(ECM_pct)):
 
 plt.figure('Monthly MYC transfer', figsize=(6, 8));
 plt.clf()
-ax = plt.subplot(131)
+ax = plt.subplot(221)
 ax.set_title("Monthly total MYC transfer")
 time = numpy.arange(0, 1+timestep, timestep)
 plot_Ntransfer_Monthly = numpy.zeros(1+int(1/timestep))
@@ -456,7 +502,7 @@ for plotnum in range(len(ECM_pct)):
             if climnum == 0:
                 plt.ylabel('MYC N transfer')
 
-ax = plt.subplot(132)
+ax = plt.subplot(222)
 ax.set_title("Monthly ECM transfer")
 time = numpy.arange(0, 1+timestep, timestep)
 plot_Ntransfer_ECM_Monthly = numpy.zeros(1+int(1/timestep))
@@ -474,7 +520,7 @@ for plotnum in range(len(ECM_pct)):
             if climnum == 0:
                 plt.ylabel('ECM N transfer')
 
-ax = plt.subplot(133)
+ax = plt.subplot(223)
 ax.set_title("Monthly AM transfer")
 time = numpy.arange(0, 1+timestep, timestep)
 plot_Ntransfer_AM_Monthly = numpy.zeros(1+int(1/timestep))
@@ -491,6 +537,23 @@ for plotnum in range(len(ECM_pct)):
             plt.xlabel('Time (year)')
             if climnum == 0:
                 plt.ylabel('AM N transfer')
+ax = plt.subplot(224)
+ax.set_title("Monthly Root uptake")
+time = numpy.arange(0, 1+timestep, timestep)
+plot_Nrootuptake_Monthly = numpy.zeros(1+int(1/timestep))
+for plotnum in range(len(ECM_pct)):
+    for claynum in range(len(clay)):
+        for climnum in range(len(MAT)):
+            # ax = plt.subplot(int("1"+str(nclimates)+str(climnum+1)))
+            # ax.set_title(str(MAT[climnum])+"°C")
+            for i in numpy.arange(-(1+int(1/timestep)), 0, 1):
+                plot_Nrootuptake_Monthly[i + 1+int(1/timestep)] = plot_Nrootuptake_all[i, plotnum, claynum, climnum]
+            plt.plot(time, plot_Nrootuptake_Monthly[:], ms=4, marker=markers[claynum],
+                     c=cmapECM(normECM(ECM_pct[plotnum])),
+                     label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+            plt.xlabel('Time (year)')
+            if climnum == 0:
+                plt.ylabel('N_root uptake')
 
 
 plt.figure('N uptake', figsize=(6, 8));
