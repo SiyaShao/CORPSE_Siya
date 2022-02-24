@@ -36,7 +36,8 @@ SOM_init = {'uFastC': 0.1,
             'Ntransfer': 0.0,
             'Ntransfer_ECM': 0.0,
             'Ntransfer_AM': 0.0,
-            'Nrootuptake': 0.0}
+            'Nrootuptake': 0.0,
+            'falloc': 0.0}
 
 # Set model parameters
 # Note that carbon types have names, in contrast to previous version
@@ -116,9 +117,7 @@ myc_ratio_litter = myc_ratio_NPP / (
 inputs = {'uFastC': total_inputs * fastfrac_site,
           'uSlowC': total_inputs * (1 - fastfrac_site),
           'uFastN': total_inputs * fastfrac_site / litter_CN_site,
-          'uSlowN': total_inputs * (1 - fastfrac_site) / litter_CN_site,
-          'Int_ECMC': total_inputs * myc_ratio_litter * ECM_pct / 100,
-          'Int_AMC': total_inputs * myc_ratio_litter * (1 - ECM_pct / 100)}
+          'uSlowN': total_inputs * (1 - fastfrac_site) / litter_CN_site}
 
 Ctransfer = {'ECM':0.0,'AM':0.0} # Initialize C tranfer from plants to symbiont fungi
 
@@ -146,17 +145,16 @@ def experiment(plotnum,claynum,climnum):
     # Assuming plant N_litter balances plant N_uptake and plant not relying on roots
     # This will not be needed once the model is coupled with a plant model
 
-    Ctransfer['ECM'] = total_inputs * myc_ratio_litter * ECM_pct[plotnum] / 100
-    Ctransfer['AM'] = total_inputs * myc_ratio_litter * (1-ECM_pct[plotnum] / 100)
-
     result = CORPSE_integrate.run_CORPSE_ODE(T=MAT[climnum], theta=theta, Ndemand=Ndemand,
                                              inputs=dict([(k, inputs[k][plotnum]) for k in inputs]),
                                              clay=clay[claynum], initvals=SOM_init, params=params,
-                                             times=spinuptimes, Croot=Croot[climnum], runtype='Spinup')
+                                             times=spinuptimes, Croot=Croot[climnum], totinputs=total_inputs,
+                                             ECM_pct=ECM_pct[plotnum] / 100, runtype='Spinup')
     result = CORPSE_integrate.run_CORPSE_ODE(T=MAT[climnum], theta=theta, Ndemand=Ndemand,
                                              inputs=dict([(k, inputs[k][plotnum]) for k in inputs]),
                                              clay=clay[claynum], initvals=result.iloc[-1], params=params,
-                                             times=finaltimes, Croot=Croot[climnum], runtype='Final')
+                                             times=finaltimes, Croot=Croot[climnum], totinputs=total_inputs,
+                                             ECM_pct=ECM_pct[plotnum] / 100, runtype='Final')
     for timenum in range(timesteps):
         filename = str(nclimates*nclays*plotnum+nclimates*claynum + climnum + 1)+'_Monthly_data.txt'
         result.to_csv(filename)
@@ -184,17 +182,15 @@ plot_NfromSOM_all, plot_Nsource_all, plot_Nlimit_all, plot_Nlimit_acc = data.cop
                                                                         data.copy(), data.copy(), data.copy(), \
                                                                         data.copy(), data.copy()
 plot_IntN_all, plot_Nrootuptake_all, plot_Ntransfer_all, plot_Ntransfer_ECM_all, plot_Ntransfer_AM_all, \
-plot_Nrootuptake_acc, plot_Ntransfer_acc, plot_Ntransfer_ECM_acc, plot_Ntransfer_AM_acc = data.copy(), data.copy(), \
-                                                                                          data.copy(), data.copy(), \
-                                                                                          data.copy(), data.copy(), \
-                                                                                          data.copy(),data.copy(), \
-                                                                                          data.copy()
+plot_Nrootuptake_acc, plot_Ntransfer_acc, plot_Ntransfer_ECM_acc, plot_Ntransfer_AM_acc, \
+plot_falloc_all, plot_falloc_acc = data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), \
+                                   data.copy(), data.copy(), data.copy(), data.copy(), data.copy()
 data = numpy.zeros([nplots, nclays, nclimates])  # Store the annual data of the last year
 plot_InorgN, plot_SAPC, plot_UnpC, plot_ECMC, plot_AMC, plot_TotN, plot_NfromNecro, plot_NfromSOM, plot_Nsource, \
 plot_Nlimit = data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), \
               data.copy(), data.copy()
-plot_Nrootuptake, plot_Ntransfer, plot_Ntransfer_ECM, plot_Ntransfer_AM = data.copy(), data.copy(), data.copy(), \
-                                                                          data.copy()
+plot_Nrootuptake, plot_Ntransfer, plot_Ntransfer_ECM, plot_Ntransfer_AM, plot_falloc = data.copy(), data.copy(), \
+                                                                                       data.copy(), data.copy(), data.copy()
 
 for plotnum in range(nplots):
     for claynum in range(nclays):
@@ -217,6 +213,7 @@ for plotnum in range(nplots):
             plot_Ntransfer_ECM_acc[:, plotnum, claynum, climnum] = result['Ntransfer_ECM']
             plot_Ntransfer_AM_acc[:, plotnum, claynum, climnum] = result['Ntransfer_AM']
             plot_Nrootuptake_acc[:, plotnum, claynum, climnum] = result['Nrootuptake']
+            plot_falloc_acc[:, plotnum, claynum, climnum] = result['falloc']
 
             for i in range(0, timesteps, 1):
                 if i==0:
@@ -227,11 +224,12 @@ for plotnum in range(nplots):
                         (plot_NfromNecro_all[i, plotnum, claynum, climnum]-plot_NfromNecro_all[i-1, plotnum, claynum, climnum])/\
                         (plot_NfromSOM_all[i, plotnum, claynum, climnum]-plot_NfromSOM_all[i-1, plotnum, claynum, climnum])
                 if i==0:
-                    plot_Nlimit_all[i, plotnum, claynum, climnum] = 1.0
+                    plot_Nlimit_all[i, plotnum, claynum, climnum] = plot_Nlimit_acc[i, plotnum, claynum, climnum]
                     plot_Ntransfer_all[i, plotnum, claynum, climnum] = plot_Ntransfer_acc[i, plotnum, claynum, climnum]
                     plot_Ntransfer_ECM_all[i, plotnum, claynum, climnum] = plot_Ntransfer_ECM_acc[i, plotnum, claynum, climnum]
                     plot_Ntransfer_AM_all[i, plotnum, claynum, climnum] = plot_Ntransfer_AM_acc[i, plotnum, claynum, climnum]
                     plot_Nrootuptake_all[i, plotnum, claynum, climnum] = plot_Nrootuptake_acc[i, plotnum, claynum, climnum]
+                    plot_falloc_all[i, plotnum, claynum, climnum] = plot_falloc_acc[i, plotnum, claynum, climnum]
                 else:
                     plot_Nlimit_all[i, plotnum, claynum, climnum] = 1/timestep * \
                          (plot_Nlimit_acc[i, plotnum, claynum, climnum]-plot_Nlimit_acc[i-1, plotnum, claynum, climnum])
@@ -246,6 +244,8 @@ for plotnum in range(nplots):
                     plot_Nrootuptake_all[i, plotnum, claynum, climnum] = 1 / timestep * \
                                                                     (plot_Nrootuptake_acc[i, plotnum, claynum, climnum] -
                                                                      plot_Nrootuptake_acc[i - 1, plotnum, claynum, climnum])
+                    plot_falloc_all[i, plotnum, claynum, climnum] = 1/timestep * \
+                         (plot_falloc_acc[i, plotnum, claynum, climnum]-plot_falloc_acc[i-1, plotnum, claynum, climnum])
 
             for a in range(int(1/timestep)):
                 plot_InorgN[plotnum, claynum, climnum] += timestep * (plot_InorgN_all[-int(1/timestep) + a, plotnum, claynum, climnum])
@@ -409,41 +409,41 @@ for plotnum in range(len(ECM_pct)):
             plt.xlabel('Time (year)')
             plt.ylabel('AM_C (KgC/m2)')
 
-# plt.figure('Monthly SAP N sources from Necromass', figsize=(6, 8));
-# plt.clf()
-# time = numpy.arange(0, 1+timestep, timestep)
-# plot_Nsource_Monthly = numpy.zeros((1+int(1/timestep)))
-# for plotnum in range(len(ECM_pct)):
-#     for claynum in range(len(clay)):
-#         for climnum in range(len(MAT)):
-#             ax = plt.subplot(int("1"+str(nclimates)+str(climnum+1)))
-#             ax.set_title(str(MAT[climnum])+"°C")
-#             for i in numpy.arange(-(1+int(1/timestep)), 0, 1):
-#                 plot_Nsource_Monthly[i + 1+int(1/timestep)] = 100*plot_Nsource_all[i, plotnum, claynum, climnum]
-#             plt.plot(time, plot_Nsource_Monthly[:], ms=4, marker=markers[claynum],
-#                      c=cmapECM(normECM(ECM_pct[plotnum])),
-#                      label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
-#             plt.xlabel('Time (year)')
-#             if climnum == 0:
-#                 plt.ylabel('SAP N sources from Necromass (%)')
-#
-# plt.figure('Monthly SAP N limit status', figsize=(6, 8));
-# plt.clf()
-# time = numpy.arange(0, 1+timestep, timestep)
-# plot_Nlimit_Monthly = numpy.zeros(1+int(1/timestep))
-# for plotnum in range(len(ECM_pct)):
-#     for claynum in range(len(clay)):
-#         for climnum in range(len(MAT)):
-#             ax = plt.subplot(int("1"+str(nclimates)+str(climnum+1)))
-#             ax.set_title(str(MAT[climnum])+"°C")
-#             for i in numpy.arange(-(1+int(1/timestep)), 0, 1):
-#                 plot_Nlimit_Monthly[i + 1+int(1/timestep)] = 100*(1-plot_Nlimit_all[i, plotnum, claynum, climnum])
-#             plt.plot(time, plot_Nlimit_Monthly[:], ms=4, marker=markers[claynum],
-#                      c=cmapECM(normECM(ECM_pct[plotnum])),
-#                      label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
-#             plt.xlabel('Time (year)')
-#             if climnum == 0:
-#                 plt.ylabel('SAP N limit status (%)')
+plt.figure('Monthly SAP N sources from Necromass', figsize=(6, 8));
+plt.clf()
+time = numpy.arange(0, 1+timestep, timestep)
+plot_Nsource_Monthly = numpy.zeros((1+int(1/timestep)))
+for plotnum in range(len(ECM_pct)):
+    for claynum in range(len(clay)):
+        for climnum in range(len(MAT)):
+            ax = plt.subplot(int("1"+str(nclimates)+str(climnum+1)))
+            ax.set_title(str(MAT[climnum])+"°C")
+            for i in numpy.arange(-(1+int(1/timestep)), 0, 1):
+                plot_Nsource_Monthly[i + 1+int(1/timestep)] = 100*plot_Nsource_all[i, plotnum, claynum, climnum]
+            plt.plot(time, plot_Nsource_Monthly[:], ms=4, marker=markers[claynum],
+                     c=cmapECM(normECM(ECM_pct[plotnum])),
+                     label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+            plt.xlabel('Time (year)')
+            if climnum == 0:
+                plt.ylabel('SAP N sources from Necromass (%)')
+
+plt.figure('Monthly SAP N limit status', figsize=(6, 8));
+plt.clf()
+time = numpy.arange(0, 1+timestep, timestep)
+plot_Nlimit_Monthly = numpy.zeros(1+int(1/timestep))
+for plotnum in range(len(ECM_pct)):
+    for claynum in range(len(clay)):
+        for climnum in range(len(MAT)):
+            ax = plt.subplot(int("1"+str(nclimates)+str(climnum+1)))
+            ax.set_title(str(MAT[climnum])+"°C")
+            for i in numpy.arange(-(1+int(1/timestep)), 0, 1):
+                plot_Nlimit_Monthly[i + 1+int(1/timestep)] = 100*(1-plot_Nlimit_all[i, plotnum, claynum, climnum])
+            plt.plot(time, plot_Nlimit_Monthly[:], ms=4, marker=markers[claynum],
+                     c=cmapECM(normECM(ECM_pct[plotnum])),
+                     label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+            plt.xlabel('Time (year)')
+            if climnum == 0:
+                plt.ylabel('SAP N limit status (%)')
 
 plt.figure('Monthly Intermediate N', figsize=(6, 8));
 plt.clf()
@@ -606,5 +606,23 @@ for claynum in range(len(clay)):
                  label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
         plt.xlabel('ECM percent (%)')
         plt.ylabel('Total N uptake')
+
+plt.figure('falloc', figsize=(6, 8));
+plt.clf()
+time = numpy.arange(0, 1+timestep, timestep)
+plot_falloc_Monthly = numpy.zeros(1+int(1/timestep))
+for plotnum in range(len(ECM_pct)):
+    for claynum in range(len(clay)):
+        for climnum in range(len(MAT)):
+            ax = plt.subplot(int("1"+str(nclimates)+str(climnum+1)))
+            ax.set_title(str(MAT[climnum])+"°C")
+            for i in numpy.arange(-(1+int(1/timestep)), 0, 1):
+                plot_falloc_Monthly[i + 1+int(1/timestep)] = 100*plot_falloc_all[i, plotnum, claynum, climnum]
+            plt.plot(time, plot_falloc_Monthly[:], ms=4, marker=markers[claynum],
+                     c=cmapECM(normECM(ECM_pct[plotnum])),
+                     label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+            plt.xlabel('Time (year)')
+            if climnum == 0:
+                plt.ylabel('Fraction of NPP allocated to MYC (%)')
 
 plt.show()

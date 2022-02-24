@@ -34,7 +34,7 @@ fields=CORPSE_deriv.expected_pools
 
 # This is a function that translates the CORPSE model pools to/from the format that the equation solver expects
 # The solver will call it multiple times and passes it a list of parameters that needs to be converted to a named "dictionary" that CORPSE expects
-def fsolve_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,Croot,runtype):
+def fsolve_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,Croot,totinputs,ECM_pct,runtype):
     from numpy import asarray,concatenate
 
     # Make an empty dictionary and fill it with the right values
@@ -62,7 +62,8 @@ def fsolve_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,Croot,runty
         T = Ttimecoeff(times, T)
 
     # Call the CORPSE model function that returns the derivative (with time) of each pool
-    deriv=CORPSE_deriv.CORPSE_deriv(SOM_dict,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,params,claymod=CORPSE_deriv.prot_clay(clay)/CORPSE_deriv.prot_clay(20))
+    deriv=CORPSE_deriv.CORPSE_deriv(SOM_dict,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,ECM_pct,params,
+                                    claymod=CORPSE_deriv.prot_clay(clay)/CORPSE_deriv.prot_clay(20))
 
     for pool in inputs.keys():
         if runtype == 'Final':
@@ -81,14 +82,14 @@ def fsolve_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,Croot,runty
 # The ordinary differential equation (ODE) integrating function also wants to send the current time to the function it's integrating
 # Our model doesn't have an explicit dependence on time, but we need a separate function that can deal with the extra argument.
 # We just ignore the time argument and pass the rest to the same function we used for the numerical solver
-def ode_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,Croot,runtype):
-    return fsolve_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,Croot,runtype)
+def ode_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,Croot,totinputs,ECM_pct,runtype):
+    return fsolve_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,Croot,totinputs,ECM_pct,runtype)
 
 def arrayify_dict(d):
     from numpy import atleast_1d
     return dict(((v,atleast_1d(d[v])) for v in d))
 
-def run_CORPSE_ODE(T,theta,Ndemand,inputs,clay,initvals,params,times,Croot,runtype):
+def run_CORPSE_ODE(T,theta,Ndemand,inputs,clay,initvals,params,times,Croot,totinputs,ECM_pct,runtype):
     # Use ODE integrator to actually integrate the model. Currently set up for constant temperature, moisture, and inputs
     # import time
     # t0=time.time()
@@ -102,7 +103,7 @@ def run_CORPSE_ODE(T,theta,Ndemand,inputs,clay,initvals,params,times,Croot,runty
 
     # Runs the ODE integrator
     result=odeint(ode_wrapper,ivals,times,
-        args=(T+273.15,theta,Ndemand,inputs,clay,params,Croot,runtype))
+        args=(T+273.15,theta,Ndemand,inputs,clay,params,Croot,totinputs,ECM_pct,runtype))
 
     # Store the output in a pandas DataFrame (similar to R's dataframes)
     if not isinstance(initvals['SAPC'],float) and len(initvals['SAPC'])==2:
