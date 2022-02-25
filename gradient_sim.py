@@ -275,7 +275,7 @@ plt.ylabel('Inorganic N stock (kgN/m2)')
 plt.figure('Microbial C', figsize=(6, 8));
 plt.clf()
 ax = plt.subplot(221)
-ax.set_title("SAP")
+# ax.set_title("SAP")
 for claynum in range(len(clay)):
     for climnum in range(len(MAT)):
         plt.plot(ECM_pct, plot_SAPC[:, claynum, climnum], ms=4, marker=markers[claynum],
@@ -284,7 +284,7 @@ for claynum in range(len(clay)):
         plt.xlabel('ECM percent (%)')
         plt.ylabel('SAP C (KgC/m2)')
 ax = plt.subplot(222)
-ax.set_title("ECM")
+# ax.set_title("ECM")
 for claynum in range(len(clay)):
     for climnum in range(len(MAT)):
         plt.plot(ECM_pct, plot_ECMC[:, claynum, climnum], ms=4, marker=markers[claynum],
@@ -293,7 +293,7 @@ for claynum in range(len(clay)):
         plt.xlabel('ECM percent (%)')
         plt.ylabel('ECM C (KgC/m2)')
 ax = plt.subplot(223)
-ax.set_title("AM")
+# ax.set_title("AM")
 for claynum in range(len(clay)):
     for climnum in range(len(MAT)):
         plt.plot(ECM_pct, plot_AMC[:, claynum, climnum], ms=4, marker=markers[claynum],
@@ -302,7 +302,7 @@ for claynum in range(len(clay)):
         plt.xlabel('ECM percent (%)')
         plt.ylabel('AM C (KgC/m2)')
 ax = plt.subplot(224)
-ax.set_title("Total microbes")
+# ax.set_title("Total microbes")
 for claynum in range(len(clay)):
     for climnum in range(len(MAT)):
         plt.plot(ECM_pct, plot_SAPC[:, claynum, climnum]+plot_ECMC[:, claynum, climnum]+plot_AMC[:, claynum, climnum],
@@ -485,7 +485,7 @@ for plotnum in range(len(ECM_pct)):
 plt.figure('Monthly MYC transfer', figsize=(6, 8));
 plt.clf()
 ax = plt.subplot(221)
-ax.set_title("Monthly total MYC transfer")
+# ax.set_title("Monthly total MYC transfer")
 time = numpy.arange(0, 1+timestep, timestep)
 plot_Ntransfer_Monthly = numpy.zeros(1+int(1/timestep))
 for plotnum in range(len(ECM_pct)):
@@ -503,7 +503,7 @@ for plotnum in range(len(ECM_pct)):
                 plt.ylabel('MYC N transfer')
 
 ax = plt.subplot(222)
-ax.set_title("Monthly ECM transfer")
+# ax.set_title("Monthly ECM transfer")
 time = numpy.arange(0, 1+timestep, timestep)
 plot_Ntransfer_ECM_Monthly = numpy.zeros(1+int(1/timestep))
 for plotnum in range(len(ECM_pct)):
@@ -521,7 +521,7 @@ for plotnum in range(len(ECM_pct)):
                 plt.ylabel('ECM N transfer')
 
 ax = plt.subplot(223)
-ax.set_title("Monthly AM transfer")
+# ax.set_title("Monthly AM transfer")
 time = numpy.arange(0, 1+timestep, timestep)
 plot_Ntransfer_AM_Monthly = numpy.zeros(1+int(1/timestep))
 for plotnum in range(len(ECM_pct)):
@@ -538,7 +538,7 @@ for plotnum in range(len(ECM_pct)):
             if climnum == 0:
                 plt.ylabel('AM N transfer')
 ax = plt.subplot(224)
-ax.set_title("Monthly Root uptake")
+# ax.set_title("Monthly Root uptake")
 time = numpy.arange(0, 1+timestep, timestep)
 plot_Nrootuptake_Monthly = numpy.zeros(1+int(1/timestep))
 for plotnum in range(len(ECM_pct)):
@@ -558,8 +558,8 @@ for plotnum in range(len(ECM_pct)):
 
 plt.figure('N uptake', figsize=(6, 8));
 plt.clf()
-ax = plt.subplot(321)
-ax.set_title("Annual mycorrhizal transfer")
+ax = plt.subplot(231)
+# ax.set_title("Annual mycorrhizal transfer")
 for claynum in range(len(clay)):
     for climnum in range(len(MAT)):
         plt.plot(ECM_pct, plot_Ntransfer[:, claynum, climnum], ms=4, marker=markers[claynum],
@@ -567,8 +567,8 @@ for claynum in range(len(clay)):
                  label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
         # plt.xlabel('ECM percent (%)')
         plt.ylabel('Annual mycorrhizal transfer')
-ax = plt.subplot(322)
-ax.set_title("Annual ECM transfer")
+ax = plt.subplot(232)
+# ax.set_title("Annual ECM transfer")
 for claynum in range(len(clay)):
     for climnum in range(len(MAT)):
         plt.plot(ECM_pct, plot_Ntransfer_ECM[:, claynum, climnum], ms=4, marker=markers[claynum],
@@ -576,8 +576,8 @@ for claynum in range(len(clay)):
                  label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
         # plt.xlabel('ECM percent (%)')
         plt.ylabel('Annual ECM transfer')
-ax = plt.subplot(323)
-ax.set_title("Annual AM transfer")
+ax = plt.subplot(233)
+# ax.set_title("Annual AM transfer")
 for claynum in range(len(clay)):
     for climnum in range(len(MAT)):
         print(climnum, plot_Ntransfer_AM[:, claynum, climnum])
@@ -586,8 +586,8 @@ for claynum in range(len(clay)):
                  label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
         # plt.xlabel('ECM percent (%)')
         plt.ylabel('Annual AM transfer')
-ax = plt.subplot(324)
-ax.set_title("Root N uptake")
+ax = plt.subplot(234)
+# ax.set_title("Root N uptake")
 for claynum in range(len(clay)):
     for climnum in range(len(MAT)):
         print(climnum, plot_Nrootuptake[:, claynum, climnum])
@@ -596,7 +596,7 @@ for claynum in range(len(clay)):
                  label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
         plt.xlabel('ECM percent (%)')
         plt.ylabel('Root N uptake')
-ax = plt.subplot(325)
+ax = plt.subplot(235)
 ax.set_title("Total N uptake")
 for claynum in range(len(clay)):
     for climnum in range(len(MAT)):
@@ -622,7 +622,23 @@ for plotnum in range(len(ECM_pct)):
                      c=cmapECM(normECM(ECM_pct[plotnum])),
                      label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
             plt.xlabel('Time (year)')
-            if climnum == 0:
-                plt.ylabel('Fraction of NPP allocated to MYC (%)')
+
+plt.figure('N uptake_barplot', figsize=(6, 8));
+plt.clf()
+time = numpy.arange(0, 1+timestep, timestep)
+for plotnum in range(len(ECM_pct)):
+    for claynum in range(len(clay)):
+        for climnum in range(len(MAT)):
+            ax = plt.subplot(int("1"+str(nclimates)+str(climnum+1)))
+            ax.set_title(str(MAT[climnum])+"°C")
+            x = numpy.arange(5)
+            width = 0.2
+            plt.bar(x - width, plot_Ntransfer_AM[:, claynum, climnum], width, color='cyan')
+            plt.bar(x, plot_Ntransfer_ECM[:, claynum, climnum], width, color='orange')
+            plt.bar(x + width, plot_Nrootuptake[:, claynum, climnum], width, color='green')
+            plt.xticks(x, ['0%', '25%', '50%', '75%', '100%'])
+            plt.xlabel("ECM gradient")
+            plt.ylabel("N uptake")
+            plt.legend(["AM transfer", "ECM transfer", "Root uptake"])
 
 plt.show()
