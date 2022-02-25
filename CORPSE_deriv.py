@@ -147,9 +147,9 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,ECM_pc
         if mt=='SAP':
            for t in chem_types:
                if t=='Slow':
-                   CUE_SAP = 0.61 - 0.012 * (T - 273.15)  # From DeVêvre and Horwáth (2000)
+                   CUE_SAP = 0.3512 - 0.0095 * (T - 273.15)  # From DeVêvre and Horwáth (2000)
                else:
-                   CUE_SAP = 0.3512 - 0.0095 * (T - 273.15)  # Frey et al. (2013) (Phenols)
+                   CUE_SAP = 0.61 - 0.012 * (T - 273.15) # Frey et al. (2013) (Phenols)
                carbon_supply[mt]=carbon_supply[mt]+decomp[t+'C']*CUE_SAP
                nitrogen_supply[mt]=nitrogen_supply[mt]+decomp[t+'N']*params['nup'][t]
                IMM_N_max = T_factor(T,params,'InorgN') * params['max_scavenging_rate']['SAP'] * SOM['inorganicN'] / (
