@@ -131,7 +131,7 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,ECM_pc
 
     for mt in mic_types:
         microbeTurnover[mt] = (SOM[mt+'C']-params['minMicrobeC'][mt]*(sumCtypes(SOM,'u')))/params['Tmic'][mt]\
-                              *T_factor(T,params,'Turnover');   # T sensitivity for microbial turnover
+                              *1.0#T_factor(T,params,'Turnover');   # T sensitivity for microbial turnover
         if isinstance(microbeTurnover[mt],float):
            microbeTurnover[mt]=max(0.0,microbeTurnover[mt])
         else:

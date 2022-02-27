@@ -185,6 +185,7 @@ plot_IntN_all, plot_Nrootuptake_all, plot_Ntransfer_all, plot_Ntransfer_ECM_all,
 plot_Nrootuptake_acc, plot_Ntransfer_acc, plot_Ntransfer_ECM_acc, plot_Ntransfer_AM_acc, \
 plot_falloc_all, plot_falloc_acc = data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), \
                                    data.copy(), data.copy(), data.copy(), data.copy(), data.copy()
+plot_IntECMC_all = data.copy()
 data = numpy.zeros([nplots, nclays, nclimates])  # Store the annual data of the last year
 plot_InorgN, plot_SAPC, plot_UnpC, plot_ECMC, plot_AMC, plot_TotN, plot_NfromNecro, plot_NfromSOM, plot_Nsource, \
 plot_Nlimit = data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), \
@@ -214,6 +215,7 @@ for plotnum in range(nplots):
             plot_Ntransfer_AM_acc[:, plotnum, claynum, climnum] = result['Ntransfer_AM']
             plot_Nrootuptake_acc[:, plotnum, claynum, climnum] = result['Nrootuptake']
             plot_falloc_acc[:, plotnum, claynum, climnum] = result['falloc']
+            plot_IntECMC_all[:, plotnum, claynum, climnum] = result['Int_ECMC']
 
             for i in range(0, timesteps, 1):
                 if i==0:
@@ -619,6 +621,22 @@ for plotnum in range(len(ECM_pct)):
             for i in numpy.arange(-(1+int(1/timestep)), 0, 1):
                 plot_falloc_Monthly[i + 1+int(1/timestep)] = 100*plot_falloc_all[i, plotnum, claynum, climnum]
             plt.plot(time, plot_falloc_Monthly[:], ms=4, marker=markers[claynum],
+                     c=cmapECM(normECM(ECM_pct[plotnum])),
+                     label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+            plt.xlabel('Time (year)')
+
+plt.figure('Int_ECMC', figsize=(6, 8));
+plt.clf()
+time = numpy.arange(0, 1+timestep, timestep)
+plot_IntECMC_Monthly = numpy.zeros(1+int(1/timestep))
+for plotnum in range(len(ECM_pct)):
+    for claynum in range(len(clay)):
+        for climnum in range(len(MAT)):
+            ax = plt.subplot(int("1"+str(nclimates)+str(climnum+1)))
+            ax.set_title(str(MAT[climnum])+"°C")
+            for i in numpy.arange(-(1+int(1/timestep)), 0, 1):
+                plot_IntECMC_Monthly[i + 1+int(1/timestep)] = plot_IntECMC_all[i, plotnum, claynum, climnum]
+            plt.plot(time, plot_IntECMC_Monthly[:], ms=4, marker=markers[claynum],
                      c=cmapECM(normECM(ECM_pct[plotnum])),
                      label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
             plt.xlabel('Time (year)')

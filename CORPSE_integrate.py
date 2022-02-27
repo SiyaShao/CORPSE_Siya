@@ -1,6 +1,7 @@
 
 import CORPSE_deriv
 import pandas
+import scipy.stats as stats
 
 # To run the model on monthly time step,
 # make the inputs vary with time as litter and MYC C transfer are mainly in the fall
@@ -26,7 +27,7 @@ def Ttimecoeff(time,T):
 def NPPtimecoeff(time):
     from numpy import math
     timestep = time - int(time)
-    NPPtimecoeff = math.pow(math.sin(math.pi*(timestep+0.25)),2)*2.0
+    NPPtimecoeff = 40*stats.gamma.pdf(40*timestep, a=4, scale=2)#math.pow(math.sin(math.pi*(timestep+0.25)),2)*2.0
     # (1.0 + math.pow(math.sin(math.pi *(timestep+0.25)), 2)) / 1.5 # More even distribution
     return NPPtimecoeff
 
@@ -60,6 +61,9 @@ def fsolve_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,Croot,totin
 
     if runtype == 'Final':
         T = Ttimecoeff(times, T)
+
+    if runtype == 'Final':
+        totinputs = totinputs * NPPtimecoeff(times)
 
     # Call the CORPSE model function that returns the derivative (with time) of each pool
     deriv=CORPSE_deriv.CORPSE_deriv(SOM_dict,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,ECM_pct,params,
