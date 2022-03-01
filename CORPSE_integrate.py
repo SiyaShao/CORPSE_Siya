@@ -5,30 +5,34 @@ import scipy.stats as stats
 
 # To run the model on monthly time step,
 # make the inputs vary with time as litter and MYC C transfer are mainly in the fall
-def timecoeff(time):
+def timecoeff(time,T):
     from numpy import math
     timestep = time - int(time)
-    timecoeff = math.pow(math.sin(math.pi*timestep),2)*2.0  # (1.0+math.pow(math.sin(math.pi*timestep),2))/1.5
-    # math.pow(math.sin(math.pi*timestep),2)*2.0
-    # if timestep>=0.50 and timestep<0.75: # Set between 9/12 to 10/12 year (Sep to Oct)
-    #     timecoeff = 1.0/0.25
-    # else:
-    #     timecoeff = 0.0
+    if T - 273.15 == 20:
+        timecoeff = 40 * stats.gamma.pdf(40 * timestep, a=9, scale=1)  # Litter peaks in mid-March
+    else:
+        timecoeff = 40 * stats.gamma.pdf(40 * (1 - timestep), a=9, scale=1)  # Litter peaks in mid-October
+    # Time_diff = 0.29166667  # -0.29166667 means litter peaks in autumn, 0.29166667 means litter peaks in spring
+    # timecoeff = math.pow(math.sin(math.pi*(timestep+Time_diff)),2)*2.0
     return timecoeff
 
 def Ttimecoeff(time,T):
     from numpy import math
     timestep = time - int(time)
-    Tem_diff = 30.0 # Hot climates have low annual T range (10 degrees), cold ones has large range (30 degrees)
-    Time_diff = 1.0 # 1.0 means litterfall peaks in fall while 0.5 means in spring and 0.25 means in winter
-    Ttimecoeff = T + Tem_diff/2.0*math.sin(2*math.pi*(timestep+Time_diff))
+    if T-273.15 == 20:
+       Tem_diff = 10.0 # Hot climates have low annual T range (10 degrees), colder ones has large range (20-30 degrees)
+    elif T-273.15 == 12.5:
+        Tem_diff = 20.0
+    else:
+        Tem_diff = 30.0
+    Ttimecoeff = T + Tem_diff/2.0*math.sin(2*math.pi*(timestep+1.0))
     return Ttimecoeff
 
 def NPPtimecoeff(time):
     from numpy import math
     timestep = time - int(time)
-    NPPtimecoeff = 40*stats.gamma.pdf(40*timestep, a=4, scale=2)#math.pow(math.sin(math.pi*(timestep+0.25)),2)*2.0
-    # (1.0 + math.pow(math.sin(math.pi *(timestep+0.25)), 2)) / 1.5 # More even distribution
+    NPPtimecoeff = 40*stats.gamma.pdf(40*timestep, a=16, scale=1)
+    # Dramatic increase in NPP around April and then decrease after that
     return NPPtimecoeff
 
 fields=CORPSE_deriv.expected_pools
@@ -50,7 +54,7 @@ def fsolve_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,Croot,totin
             SOM_dict[fields[n]]=asarray(SOM_list[n])
 
     if runtype == 'Final':
-        Nlitter = Ndemand * timecoeff(times)
+        Nlitter = Ndemand * timecoeff(times, T)
     else:
         Nlitter = Ndemand
 
@@ -71,7 +75,7 @@ def fsolve_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,Croot,totin
 
     for pool in inputs.keys():
         if runtype == 'Final':
-            deriv[pool]+=inputs[pool] * timecoeff(times)
+            deriv[pool]+=inputs[pool] * timecoeff(times,T)
         else:
             deriv[pool] += inputs[pool]
 
