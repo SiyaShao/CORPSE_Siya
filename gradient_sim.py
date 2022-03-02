@@ -64,7 +64,7 @@ params = {
     'substrate_diffusion_exp': 1.5,
     'new_resp_units': True,
     'eup_myc': {'ECM':0.5,'AM':0.5},
-    'max_mining_rate': {'Fast': 1.0, 'Slow': 0.6, 'Necro': 1.0},
+    'max_mining_rate': {'Fast': 1.0, 'Slow': 0.6, 'Necro': 9.0},
     # assumed to be more efficient with Slow and Necro pools, and less efficient with fast pools, compared to SAPs
     'kc_mining': 0.015, # g microbial biomass C/g substrate C, Sulman et al., (2019)
     'max_scavenging_rate': {'SAP':0.16,'ECM':0.0,'AM':0.2},
@@ -80,6 +80,7 @@ params = {
     'N_deposition': 0.001,  # Annual nitrogen deposition 1.0gN/m2/yr
     'kG_simb': 0.3, # Half-saturation of intermediate C pool for symbiotic growth (kg C m-2)'
     'rgrowth_simb': 0.3, # Maximum growth rate of mycorrhizal fungi (kg C m-2 year-1)
+    'falloc_base': 0.5, # Base allocation of NPP to mycorrhizal fungi
     'Ohorizon_transfer_rates': {'uFastC': 0.1, 'uSlowC': 0.1, 'uNecroC': 0.1, 'uFastN': 0.1, 'uSlowN': 0.1,
                                 'uNecroN': 0.1}
 }
@@ -185,11 +186,11 @@ plot_IntN_all, plot_Nrootuptake_all, plot_Ntransfer_all, plot_Ntransfer_ECM_all,
 plot_Nrootuptake_acc, plot_Ntransfer_acc, plot_Ntransfer_ECM_acc, plot_Ntransfer_AM_acc, \
 plot_falloc_all, plot_falloc_acc = data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), \
                                    data.copy(), data.copy(), data.copy(), data.copy(), data.copy()
-plot_IntECMC_all = data.copy()
+plot_IntECMC_all, plot_TotC_all = data.copy(), data.copy()
 data = numpy.zeros([nplots, nclays, nclimates])  # Store the annual data of the last year
 plot_InorgN, plot_SAPC, plot_UnpC, plot_ECMC, plot_AMC, plot_TotN, plot_NfromNecro, plot_NfromSOM, plot_Nsource, \
-plot_Nlimit = data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), \
-              data.copy(), data.copy()
+plot_Nlimit, plot_TotC = data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), \
+                         data.copy(), data.copy(), data.copy(), data.copy()
 plot_Nrootuptake, plot_Ntransfer, plot_Ntransfer_ECM, plot_Ntransfer_AM, plot_falloc = data.copy(), data.copy(), \
                                                                                        data.copy(), data.copy(), data.copy()
 
@@ -202,6 +203,8 @@ for plotnum in range(nplots):
             plot_InorgN_all[:, plotnum, claynum, climnum] = result['inorganicN']
             plot_SAPC_all[:, plotnum, claynum, climnum] = result['SAPC']
             plot_UnpC_all[:, plotnum, claynum, climnum] = result['uFastC']+result['uSlowC']+result['uNecroC']
+            plot_TotC_all[:, plotnum, claynum, climnum] = plot_UnpC_all[:, plotnum, claynum, climnum]+\
+                                                          result['pFastC']+result['pSlowC']+result['pNecroC']
             plot_ECMC_all[:, plotnum, claynum, climnum] = result['ECMC']
             plot_AMC_all[:, plotnum, claynum, climnum] = result['AMC']
             plot_TotN_all[:, plotnum, claynum, climnum] = result['uFastN']+result['uSlowN']+result['uNecroN']+\
@@ -256,12 +259,22 @@ for plotnum in range(nplots):
                 plot_ECMC[plotnum, claynum, climnum] += timestep * (plot_ECMC_all[-int(1/timestep) + a, plotnum, claynum, climnum])
                 plot_AMC[plotnum, claynum, climnum] += timestep * (plot_AMC_all[-int(1/timestep) + a, plotnum, claynum, climnum])
                 plot_TotN[plotnum, claynum, climnum] += timestep * (plot_TotN_all[-int(1/timestep) + a, plotnum, claynum, climnum])
+                plot_TotC[plotnum, claynum, climnum] += timestep * (plot_TotC_all[-int(1 / timestep) + a, plotnum, claynum, climnum])
                 plot_NfromNecro[plotnum, claynum, climnum] += timestep * (plot_NfromNecro_all[-int(1/timestep) + a, plotnum, claynum, climnum])
                 plot_NfromSOM[plotnum, claynum, climnum] += timestep * (plot_NfromSOM_all[-int(1/timestep) + a, plotnum, claynum, climnum])
                 plot_Ntransfer[plotnum, claynum, climnum] += timestep * (plot_Ntransfer_all[-int(1/timestep) + a, plotnum, claynum, climnum])
                 plot_Ntransfer_ECM[plotnum, claynum, climnum] += timestep * (plot_Ntransfer_ECM_all[-int(1/timestep) + a, plotnum, claynum, climnum])
                 plot_Ntransfer_AM[plotnum, claynum, climnum] += timestep * (plot_Ntransfer_AM_all[-int(1/timestep) + a, plotnum, claynum, climnum])
                 plot_Nrootuptake[plotnum, claynum, climnum] += timestep * (plot_Nrootuptake_all[-int(1 / timestep) + a, plotnum, claynum, climnum])
+
+plt.figure('Total soil C:N', figsize=(6, 8));
+plt.clf()
+for claynum in range(len(clay)):
+    for climnum in range(len(MAT)):
+        plt.plot(ECM_pct, plot_TotC[:, claynum, climnum]/plot_TotN[:, claynum, climnum], ms=4, marker=markers[claynum],
+                 c=cmap(norm(MAT[climnum])),
+                 label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+        plt.xlabel('ECM percent (%)')
 
 plt.figure('Inorganic N', figsize=(6, 8));
 plt.clf()

@@ -29,7 +29,8 @@ expected_params={	'vmaxref': 'Relative maximum enzymatic decomp rates (length 3)
             'iN_loss_rate': 'Loss rate from inorganic N pool',
             'N_deposition': 'Annual nitrogen deposition',
             'kG_simb': 'Half-saturation of intermediate C pool for symbiotic growth (kg C m-2)',
-            'rgrowth_simb': 'Maximum growth rate of mycorrhizal fungi'}
+            'rgrowth_simb': 'Maximum growth rate of mycorrhizal fungi',
+            'falloc_base': '# Base allocation of NPP to mycorrhizal fungi'}
 
 chem_types = ['Fast','Slow','Necro']
 
@@ -147,9 +148,9 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,ECM_pc
         if mt=='SAP':
            for t in chem_types:
                if t=='Slow':
-                   CUE_SAP = 0.3512 - 0.0095 * (T - 273.15)  # From DeVêvre and Horwáth (2000)
+                   CUE_SAP = 0.1  # 0.3512 - 0.0095 * (T - 273.15)  # Frey et al. (2013) (Phenols)
                else:
-                   CUE_SAP = 0.61 - 0.012 * (T - 273.15) # Frey et al. (2013) (Phenols)
+                   CUE_SAP = 0.61 - 0.012 * (T - 273.15)  # From DeVêvre and Horwáth (2000)
                carbon_supply[mt]=carbon_supply[mt]+decomp[t+'C']*CUE_SAP
                nitrogen_supply[mt]=nitrogen_supply[mt]+decomp[t+'N']*params['nup'][t]
                IMM_N_max = T_factor(T,params,'InorgN') * params['max_scavenging_rate']['SAP'] * SOM['inorganicN'] / (
@@ -203,7 +204,7 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,ECM_pc
 
     Nstress = max(0.0,(4*Ndemand-SOM['Int_N'])/(4*Ndemand))
     Nuptake_root = Nstress*F_rhiz*rNH4*SOM['inorganicN'] / (SOM['inorganicN'] + km_nh4_root * params['depth'])
-    falloc = max(0.0,(4*Ndemand-SOM['Int_N'])/(4*Ndemand)*0.25)
+    falloc = max(0.0,(4*Ndemand-SOM['Int_N'])/(4*Ndemand)*params['falloc_base'])
     # If mycorrhizal fungi transfer too much N to plants (N_int pool exceeding 2*Ndemand), then mycorrhizal N acquisition
     # is decreased accordingly. This will not be needed once coupled to a plant growth model.
     Ntransfer = max(0.0,CN_imbalance_term['ECM']) + max(0.0,CN_imbalance_term['AM'])
