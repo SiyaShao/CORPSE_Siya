@@ -1,7 +1,10 @@
-import pandas, numpy
+import pandas, numpy, math, matplotlib.pyplot
 
 # Code for integrating the model using python ODE solver
 import CORPSE_integrate
+
+# Code for extracting data from nc files
+import data_ncfile
 
 # Initial values for all pools in the model
 # The {} brackets create a "dictionary" where everything is indexed by a name rather than a number
@@ -91,7 +94,7 @@ SOM_init['AMN'] = SOM_init['AMC'] / params['CN_microbe']['AM']
 # ECM gradient plots
 nplots = 5
 nclays = 1
-nclimates = 3
+nclimates = 1
 # Environmental conditions
 # Gradient of mycorrhizal association
 ECM_pct = numpy.linspace(0, 100, nplots)  # Percent ECM basal area
@@ -127,11 +130,44 @@ theta = 0.5  # fraction of saturation
 spinuptimes = numpy.arange(0, 2500,
                      10)  # 10-year time steps for model spinup as spinning up on finer timestep would take too long
 timestep = 1/12.0  # Monthly
-finaltimes = numpy.arange(0, 100 + timestep, timestep)  # Time steps to evaluat, running on quatily timestep
+finaltimes = numpy.arange(timestep, 100 + timestep, timestep)  # Time steps to evaluate, running on monthly timesteps
 plottimes = finaltimes
 timesteps = len(finaltimes)  # According to what is set for times in the above lines (numpy.arrange)
 # The ODE solver uses an adaptive timestep but will return these time points
 
+results = data_ncfile.data_ncfile('US-Ho1')
+total_inputs_C = numpy.tile(results['LitterC'], 10)/1000  # Convert g to kg
+total_inputs_N = numpy.tile(results['LitterN'], 10)/1000  # Convert g to kg
+PlantNdemand = numpy.tile(results['PlantNdemand'], 10)/1000  # Convert g to kg
+Nrootuptake = numpy.tile(results['Nrootuptake'], 10)/1000  # Convert g to kg
+LeafN = numpy.tile(results['LeafN'], 10)/1000  # Convert g to kg
+RootN = numpy.tile(results['RootN'], 10)/1000  # Convert g to kg
+NPP = results['NPP']
+# NPP[NPP<0] = 0.0
+NPP = numpy.tile(NPP, 10)/1000  # Convert g to kg
+Annual_newT = 6.2
+newT = finaltimes.copy()
+for i in range(12*100):
+    newT[i] = 6.2+29/2.0*math.sin(2*3.1415926*(finaltimes[i]-int(finaltimes[i])+1))
+# matplotlib.pyplot.plot(finaltimes,newT)
+# matplotlib.pyplot.show()
+newtheta = numpy.tile(theta, 12*100)
+MeanLeafN = numpy.mean(LeafN)
+MeanRootN = numpy.mean(RootN)
+AnnualNrootuptake = sum(Nrootuptake)/100
+AnnualNPP = sum(NPP)/100
+Annual_total_inputs_C = sum(total_inputs_C)/100
+Annual_total_inputs_N = sum(total_inputs_N)/100
+Annual_PlantNdemand = sum(PlantNdemand)/100
+newfastfrac_site = 0.1
+inputs = {'uFastC': Annual_total_inputs_C * fastfrac_site,
+          'uSlowC': Annual_total_inputs_C * (1 - fastfrac_site),
+          'uFastN': Annual_total_inputs_N * fastfrac_site,
+          'uSlowN': Annual_total_inputs_N * (1 - fastfrac_site)}
+newinputs = {'uFastC': total_inputs_C * newfastfrac_site,
+             'uSlowC': total_inputs_C * (1 - newfastfrac_site),
+             'uFastN': total_inputs_N * newfastfrac_site,
+             'uSlowN': total_inputs_N * (1 - newfastfrac_site)}
 
 # Run the simulations
 def experiment(plotnum,claynum,climnum):
@@ -146,16 +182,18 @@ def experiment(plotnum,claynum,climnum):
     # Assuming plant N_litter balances plant N_uptake and plant not relying on roots
     # This will not be needed once the model is coupled with a plant model
 
-    result = CORPSE_integrate.run_CORPSE_ODE(T=MAT[climnum], theta=theta, Ndemand=Ndemand,
+    result = CORPSE_integrate.run_CORPSE_ODE(T=Annual_newT, theta=theta, Ndemand=Annual_PlantNdemand,
                                              inputs=dict([(k, inputs[k][plotnum]) for k in inputs]),
                                              clay=clay[claynum], initvals=SOM_init, params=params,
-                                             times=spinuptimes, Croot=Croot[climnum], totinputs=total_inputs,
-                                             ECM_pct=ECM_pct[plotnum] / 100, runtype='Spinup')
-    result = CORPSE_integrate.run_CORPSE_ODE(T=MAT[climnum], theta=theta, Ndemand=Ndemand,
-                                             inputs=dict([(k, inputs[k][plotnum]) for k in inputs]),
-                                             clay=clay[claynum], initvals=result.iloc[-1], params=params,
-                                             times=finaltimes, Croot=Croot[climnum], totinputs=total_inputs,
-                                             ECM_pct=ECM_pct[plotnum] / 100, runtype='Final')
+                                             times=spinuptimes, Croot=Croot[climnum], NPP=AnnualNPP,
+                                             ECM_pct=ECM_pct[plotnum] / 100, runtype='Spinup',
+                                             LeafN=MeanLeafN, RootN=MeanRootN, Nrootuptake=AnnualNrootuptake)
+    result = CORPSE_integrate.run_CORPSE_iterator(T=newT, theta=newtheta, Ndemand=PlantNdemand,
+                                                  inputs=dict([(k, newinputs[k][plotnum]) for k in newinputs]),
+                                                  clay=clay[claynum], initvals=result.iloc[-1], params=params,
+                                                  times=finaltimes, Croot=Croot[climnum], NPP=NPP,
+                                                  ECM_pct=ECM_pct[plotnum] / 100,
+                                                  LeafN=LeafN, RootN=RootN, Nrootuptake=Nrootuptake)
     for timenum in range(timesteps):
         filename = str(nclimates*nclays*plotnum+nclimates*claynum + climnum + 1)+'_Monthly_data.txt'
         result.to_csv(filename)

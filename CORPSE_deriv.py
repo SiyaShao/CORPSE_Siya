@@ -84,7 +84,7 @@ def check_params(params):
 
 
 from numpy import zeros,size,where,atleast_1d,zeros_like
-def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,ECM_pct,params,claymod=1.0):
+def CORPSE_deriv(SOM,T,theta,Ndemand_Time,Croot,NPP,ECM_pct,LeafN,RootN,Nrootuptake,params,claymod=1.0):
     '''Calculate rates of change for all CORPSE pools
        T: Temperature (K)
        theta: Soil water content (fraction of saturation)
@@ -202,9 +202,12 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,ECM_pc
     rNH4 = 0.1 # Maximum root active N uptake rate (kgN/m3/yr) from Sulman et al.(2019)
     km_nh4_root = 0.001 # Assumed to be the same as AM uptake for now
 
-    Nstress = max(0.0,(4*Ndemand-SOM['Int_N'])/(4*Ndemand))
+    if Ndemand_Time>0.0:
+        Nstress = max(0.0,(2*(LeafN+RootN)-SOM['Int_N'])/(2*(LeafN+RootN)))
+    else:
+        Nstress = 0.0
     Nuptake_root = Nstress*F_rhiz*rNH4*SOM['inorganicN'] / (SOM['inorganicN'] + km_nh4_root * params['depth'])
-    falloc = max(0.0,(4*Ndemand-SOM['Int_N'])/(4*Ndemand)*params['falloc_base'])
+    falloc = Nstress*params['falloc_base']
     # If mycorrhizal fungi transfer too much N to plants (N_int pool exceeding 2*Ndemand), then mycorrhizal N acquisition
     # is decreased accordingly. This will not be needed once coupled to a plant growth model.
     Ntransfer = max(0.0,CN_imbalance_term['ECM']) + max(0.0,CN_imbalance_term['AM'])
@@ -276,8 +279,8 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,ECM_pc
     derivs['AMC'] = atleast_1d(dmicrobeC['AM'])
     derivs['AMN'] = atleast_1d(dmicrobeN['AM'])
 
-    derivs['Int_ECMC'] = atleast_1d(totinputs*falloc*ECM_pct - Cacq_simb['ECM'])
-    derivs['Int_AMC'] = atleast_1d(totinputs*falloc*(1-ECM_pct) - Cacq_simb['AM'])
+    derivs['Int_ECMC'] = atleast_1d(max(0.0,NPP)*falloc*ECM_pct - Cacq_simb['ECM'])
+    derivs['Int_AMC'] = atleast_1d(max(0.0,NPP)*falloc*(1-ECM_pct) - Cacq_simb['AM'])
     derivs['Int_N'] = atleast_1d(Ntransfer+Nuptake_root-Ndemand_Time)
 
     derivs['NfromNecro'] = atleast_1d(decomp['NecroN']*params['nup']['Necro'])
