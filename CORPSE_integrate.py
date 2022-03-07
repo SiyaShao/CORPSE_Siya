@@ -116,7 +116,7 @@ def run_CORPSE_ODE(T,theta,Ndemand,inputs,clay,initvals,params,times,Croot,NPP,E
 
     # print('Time elapsed: %1.1f s'%(time.time()-t0))
 
-def run_CORPSE_iterator(T,theta,Ndemand,inputs,clay,initvals,params,times,Croot,NPP,ECM_pct,LeafN,RootN,Nrootuptake):
+def run_CORPSE_iterator(T,theta,Ndemand,inputs,clay,initvals,params,times,Croot,NPP,ECM_pct,LeafN,RootN,Nrootuptake,runtime,plottime):
     # Run model with explicit timestepping. This allows arbitrary time series of T, theta, and inputs but may be slower/less accurate depending on time step length
     # Allows running a vector of points together which can be more efficient
     # To represent multiple soil compartments such as rhizosphere, litter layer, multiple soil layers, etc: Run with a vector of cells representing the different compartments
@@ -172,15 +172,13 @@ def run_CORPSE_iterator(T,theta,Ndemand,inputs,clay,initvals,params,times,Croot,
         # Since we have carbon/nitrogen inputs, these also need to be added to those rates of change with time
         for pool in inputs.keys():
             if len(atleast_1d(inputs[pool]).shape)>1:
-                deriv[pool]+=inputs[pool][step,:]/dt
+                deriv[pool]+=inputs[pool][step,:]
             else:
-                deriv[pool]+=inputs[pool]/dt  # The deriv[pool] will be multiplied by dt in the following lines
-                                              # But as we already have step-wise inputs now, we divide the inputs by dt here first
+                deriv[pool]+=inputs[pool]
 
         # Here we update the pools, using a simple explicit time step calculation
         for field in deriv.keys():
             SOM[field]=SOM[field]+deriv[field]*dt
-
         # Print some output to track progress
         if floor((step*dt*365))%365==0:
             print('Time = %d'%(step*dt))
@@ -190,7 +188,10 @@ def run_CORPSE_iterator(T,theta,Ndemand,inputs,clay,initvals,params,times,Croot,
     # npoints = 0 now, so we used the following method to store the output in pandas Dataframe
     result = {}
     for field in initvals.keys():
-        result[field] = SOM_out[field][0,:]
+        if runtime>plottime+1:
+            result[field] = SOM_out[field][0,-plottime-2:-1]
+        else:
+            result[field] = SOM_out[field][0,:]
     result_df = pandas.DataFrame(data=result)
     return result_df
 

@@ -1,14 +1,13 @@
 import pandas as pd
 import numpy as np
 
-def data_ncfile(name):
+def data_ncfile(name, timesteps):
     #name = 'CW-CS01'
     filename = 'D:/Postdoc/CORPSE_Siya/ELMoutputs/' + name + '.txt'
     file = open(filename, "r")
     datastring = file.read()
     datalist = datastring.split("\n")
 
-    timesteps = 120
     NPP = np.zeros(timesteps)
     LeafN = np.zeros(timesteps)
     RootN = np.zeros(timesteps)
@@ -39,8 +38,8 @@ def data_ncfile(name):
 if __name__ == '__main__':
     # Test simulation
     import matplotlib.pyplot as plt
-    results = data_ncfile('US-Ho1')
     timesteps = 120
+    results = data_ncfile('US-Ho1', timesteps)
     time = np.linspace(0, 1, timesteps)
     plt.subplot(2,3,1)
     plt.plot(time,results['NPP'])
