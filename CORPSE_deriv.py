@@ -202,7 +202,9 @@ def CORPSE_deriv(SOM,T,theta,Ndemand_Time,Croot,NPP,ECM_pct,LeafN,RootN,Nrootupt
     rNH4 = 0.1 # Maximum root active N uptake rate (kgN/m3/yr) from Sulman et al.(2019)
     km_nh4_root = 0.001 # Assumed to be the same as AM uptake for now
 
-    Nstress = max(0.0,(2*(LeafN+RootN)-SOM['Int_N'])/(2*(LeafN+RootN)))
+    Nstress = 0.0
+    if LeafN+RootN>0:
+        Nstress = min(2.0,max(0.0,(2*(LeafN+RootN)-SOM['Int_N'])/(2*(LeafN+RootN))))
     Nuptake_root = Nstress*F_rhiz*rNH4*SOM['inorganicN'] / (SOM['inorganicN'] + km_nh4_root * params['depth'])
     falloc = Nstress*params['falloc_base']
     # If mycorrhizal fungi transfer too much N to plants (N_int pool exceeding 2*Ndemand), then mycorrhizal N acquisition

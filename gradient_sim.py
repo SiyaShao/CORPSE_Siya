@@ -130,7 +130,7 @@ theta = 0.5  # fraction of saturation
 spinuptimes = numpy.arange(0, 2500,
                      10)  # 10-year time steps for model spinup as spinning up on finer timestep would take too long
 timestep = 1/365.0  # Daily
-results = data_ncfile.data_ncfile('US-Ho1')
+results = data_ncfile.data_ncfile('CW-CS01')  # US-Ho1, CW-CS01, US-WCr
 ELMresult_time = int(len(results['NPP'])*timestep)  # The nc files of ELM outputs contain 10 years of data for now
 runtime = 10*ELMresult_time  # Run the model after spinup for runtime years
 plottime = 10  # Only plot the results for the last plottime years

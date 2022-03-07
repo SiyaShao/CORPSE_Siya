@@ -25,7 +25,8 @@ def data_ncfile(placename):
     LitterC = dataset.variables['LITFALL'][:]*converter
     Leaf_litterC = dataset.variables['LEAFC_TO_LITTER'][:]*converter
     Root_litterC = LitterC - Leaf_litterC
-    RootC = (LitterC - Leaf_litterC) / Leaf_litterC * LeafC
+    RLratio = sum(Root_litterC[:])/sum(Leaf_litterC[:])
+    RootC = RLratio * LeafC
     RootN = (RootC / RootCN)
     LitterN = Leaf_litterC / Leaf_litterCN + Root_litterC / Root_litterCN
     Nresorp = Leaf_litterC / LeafCN + Root_litterC / RootCN - LitterN
@@ -40,7 +41,7 @@ def data_ncfile(placename):
 if __name__ == '__main__':
     # Test simulation
     import matplotlib.pyplot as plt
-    results = data_ncfile('US-Ho1')
+    results = data_ncfile('US-Ho1') # CW-CS01,US-Ho1,US-WCr
     time = np.linspace(0, 1, len(results['NPP']))
     plt.subplot(2,3,1)
     plt.plot(time,results['NPP'])
