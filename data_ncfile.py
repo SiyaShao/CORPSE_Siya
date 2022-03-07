@@ -28,7 +28,7 @@ def data_ncfile(placename):
     RootC = (LitterC - Leaf_litterC) / Leaf_litterC * LeafC
     RootN = (RootC / RootCN)
     LitterN = Leaf_litterC / Leaf_litterCN + Root_litterC / Root_litterCN
-    Nresorp = 0.0*(Leaf_litterC / LeafCN + Root_litterC / RootCN - LitterN)
+    Nresorp = Leaf_litterC / LeafCN + Root_litterC / RootCN - LitterN
     SoilT = dataset.variables['TSOI_10CM'][:] - 273.15
     SoilM = dataset.variables['H2OSOI'][:, 3, 0]
 
