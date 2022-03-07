@@ -133,7 +133,7 @@ timestep = 1/365.0  # Daily
 ELMresult_time = 10  # The nc files of ELM outputs contain 10 years of data for now
 runtime = 10*ELMresult_time  # Run the model after spinup for runtime years
 plottime = 10  # Only plot the results for the last plottime years
-results = data_ncfile.data_ncfile('US-Ho1', int(1/timestep*ELMresult_time))
+results = data_ncfile.data_ncfile('US-Ho1')
 repeat_times = int(runtime/ELMresult_time)
 finaltimes = numpy.arange(timestep, runtime + timestep, timestep)  # Time steps to evaluate, running on monthly timesteps
 plottimes = numpy.arange(timestep, plottime + timestep, timestep)
@@ -156,6 +156,10 @@ for i in range(int(1/timestep*runtime)):
 # matplotlib.pyplot.plot(finaltimes,newT)
 # matplotlib.pyplot.show()
 newtheta = numpy.tile(theta, int(1/timestep*runtime))
+newtheta =  numpy.tile(results['SoilM'], repeat_times)
+Annual_newtheta = numpy.mean(newtheta)
+newT =  numpy.tile(results['SoilT'], repeat_times)
+Annual_newT = numpy.mean(newT)
 MeanLeafN = numpy.mean(LeafN)
 MeanRootN = numpy.mean(RootN)
 AnnualNrootuptake = sum(Nrootuptake)/runtime
@@ -191,7 +195,7 @@ def experiment(plotnum,claynum,climnum):
     # Assuming plant N_litter balances plant N_uptake and plant not relying on roots
     # This will not be needed once the model is coupled with a plant model
 
-    result = CORPSE_integrate.run_CORPSE_ODE(T=Annual_newT, theta=theta, Ndemand=Annual_PlantNdemand,
+    result = CORPSE_integrate.run_CORPSE_ODE(T=Annual_newT, theta=Annual_newtheta, Ndemand=Annual_PlantNdemand,
                                              inputs=dict([(k, inputs[k][plotnum]) for k in inputs]),
                                              clay=clay[claynum], initvals=SOM_init, params=params,
                                              times=spinuptimes, Croot=Croot[climnum], NPP=AnnualNPP,
@@ -290,19 +294,19 @@ for plotnum in range(nplots):
                      (plot_falloc_acc[i+1, plotnum, claynum, climnum]-plot_falloc_acc[i, plotnum, claynum, climnum])
 
             for a in range(plottime*int(1/timestep)):
-                plot_InorgN[plotnum, claynum, climnum] += timestep * (plot_InorgN_all[-plottime*int(1/timestep) + a, plotnum, claynum, climnum])
-                plot_SAPC[plotnum, claynum, climnum] += timestep * (plot_SAPC_all[-plottime*int(1/timestep) + a, plotnum, claynum, climnum])
-                plot_UnpC[plotnum, claynum, climnum] += timestep * (plot_UnpC_all[-plottime*int(1/timestep) + a, plotnum, claynum, climnum])
-                plot_ECMC[plotnum, claynum, climnum] += timestep * (plot_ECMC_all[-plottime*int(1/timestep) + a, plotnum, claynum, climnum])
-                plot_AMC[plotnum, claynum, climnum] += timestep * (plot_AMC_all[-plottime*int(1/timestep) + a, plotnum, claynum, climnum])
-                plot_TotN[plotnum, claynum, climnum] += timestep * (plot_TotN_all[-plottime*int(1/timestep) + a, plotnum, claynum, climnum])
-                plot_TotC[plotnum, claynum, climnum] += timestep * (plot_TotC_all[-plottime*int(1 / timestep) + a, plotnum, claynum, climnum])
-                plot_NfromNecro[plotnum, claynum, climnum] += timestep * (plot_NfromNecro_acc[-plottime*int(1/timestep) + a, plotnum, claynum, climnum])
-                plot_NfromSOM[plotnum, claynum, climnum] += timestep * (plot_NfromSOM_acc[-plottime*int(1/timestep) + a, plotnum, claynum, climnum])
-                plot_Ntransfer[plotnum, claynum, climnum] += timestep * (plot_Ntransfer_all[-plottime*int(1/timestep) + a, plotnum, claynum, climnum])
-                plot_Ntransfer_ECM[plotnum, claynum, climnum] += timestep * (plot_Ntransfer_ECM_all[-plottime*int(1/timestep) + a, plotnum, claynum, climnum])
-                plot_Ntransfer_AM[plotnum, claynum, climnum] += timestep * (plot_Ntransfer_AM_all[-plottime*int(1/timestep) + a, plotnum, claynum, climnum])
-                plot_Nrootuptake[plotnum, claynum, climnum] += timestep * (plot_Nrootuptake_all[-plottime*int(1 / timestep) + a, plotnum, claynum, climnum])
+                plot_InorgN[plotnum, claynum, climnum] += timestep/plottime * (plot_InorgN_all[-plottime*int(1/timestep) + a, plotnum, claynum, climnum])
+                plot_SAPC[plotnum, claynum, climnum] += timestep/plottime * (plot_SAPC_all[-plottime*int(1/timestep) + a, plotnum, claynum, climnum])
+                plot_UnpC[plotnum, claynum, climnum] += timestep/plottime * (plot_UnpC_all[-plottime*int(1/timestep) + a, plotnum, claynum, climnum])
+                plot_ECMC[plotnum, claynum, climnum] += timestep/plottime * (plot_ECMC_all[-plottime*int(1/timestep) + a, plotnum, claynum, climnum])
+                plot_AMC[plotnum, claynum, climnum] += timestep/plottime * (plot_AMC_all[-plottime*int(1/timestep) + a, plotnum, claynum, climnum])
+                plot_TotN[plotnum, claynum, climnum] += timestep/plottime * (plot_TotN_all[-plottime*int(1/timestep) + a, plotnum, claynum, climnum])
+                plot_TotC[plotnum, claynum, climnum] += timestep/plottime * (plot_TotC_all[-plottime*int(1 / timestep) + a, plotnum, claynum, climnum])
+                plot_NfromNecro[plotnum, claynum, climnum] += timestep/plottime * (plot_NfromNecro_acc[-plottime*int(1/timestep) + a, plotnum, claynum, climnum])
+                plot_NfromSOM[plotnum, claynum, climnum] += timestep/plottime * (plot_NfromSOM_acc[-plottime*int(1/timestep) + a, plotnum, claynum, climnum])
+                plot_Ntransfer[plotnum, claynum, climnum] += timestep/plottime * (plot_Ntransfer_all[-plottime*int(1/timestep) + a, plotnum, claynum, climnum])
+                plot_Ntransfer_ECM[plotnum, claynum, climnum] += timestep/plottime * (plot_Ntransfer_ECM_all[-plottime*int(1/timestep) + a, plotnum, claynum, climnum])
+                plot_Ntransfer_AM[plotnum, claynum, climnum] += timestep/plottime * (plot_Ntransfer_AM_all[-plottime*int(1/timestep) + a, plotnum, claynum, climnum])
+                plot_Nrootuptake[plotnum, claynum, climnum] += timestep/plottime * (plot_Nrootuptake_all[-plottime*int(1 / timestep) + a, plotnum, claynum, climnum])
 
 plt.figure('Total soil C:N', figsize=(6, 8));
 plt.clf()
