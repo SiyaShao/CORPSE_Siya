@@ -27,17 +27,14 @@ def data_ncfile(placename):
     Root_litterC = LitterC - Leaf_litterC
     RootC = (LitterC - Leaf_litterC) / Leaf_litterC * LeafC
     RootN = (RootC / RootCN)
-    LitterCN = LitterC / (Leaf_litterC / Leaf_litterCN + Root_litterC / Root_litterCN)
-    LitterN = (LitterC / LitterCN)
-    LitterC = LitterC
-    LitterN = LitterN
-    LeafN = LeafN
+    LitterN = Leaf_litterC / Leaf_litterCN + Root_litterC / Root_litterCN
+    Nresorp = 0.0*(Leaf_litterC / LeafCN + Root_litterC / RootCN - LitterN)
     SoilT = dataset.variables['TSOI_10CM'][:] - 273.15
     SoilM = dataset.variables['H2OSOI'][:, 3, 0]
 
     result_df = pd.DataFrame({'NPP': NPP.ravel(), 'LeafN': LeafN.ravel(), 'RootN': RootN.ravel(), 'PlantNdemand': PlantNdemand.ravel(),
                               'Nrootuptake': Nrootuptake.ravel(), 'LitterC': LitterC.ravel(), 'LitterN': LitterN.ravel(),
-                              'SoilT': SoilT.ravel(), 'SoilM': SoilM.ravel()})
+                              'Nresorp': Nresorp.ravel(), 'SoilT': SoilT.ravel(), 'SoilM': SoilM.ravel()})
     return result_df
 
 if __name__ == '__main__':

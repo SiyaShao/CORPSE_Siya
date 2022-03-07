@@ -130,10 +130,10 @@ theta = 0.5  # fraction of saturation
 spinuptimes = numpy.arange(0, 2500,
                      10)  # 10-year time steps for model spinup as spinning up on finer timestep would take too long
 timestep = 1/365.0  # Daily
-ELMresult_time = 10  # The nc files of ELM outputs contain 10 years of data for now
+results = data_ncfile.data_ncfile('US-Ho1')
+ELMresult_time = int(len(results['NPP'])*timestep)  # The nc files of ELM outputs contain 10 years of data for now
 runtime = 10*ELMresult_time  # Run the model after spinup for runtime years
 plottime = 10  # Only plot the results for the last plottime years
-results = data_ncfile.data_ncfile('US-Ho1')
 repeat_times = int(runtime/ELMresult_time)
 finaltimes = numpy.arange(timestep, runtime + timestep, timestep)  # Time steps to evaluate, running on monthly timesteps
 plottimes = numpy.arange(timestep, plottime + timestep, timestep)
@@ -149,17 +149,18 @@ RootN = numpy.tile(results['RootN'], repeat_times)/1000  # Convert g to kg
 NPP = results['NPP']
 # NPP[NPP<0] = 0.0
 NPP = numpy.tile(NPP, repeat_times)/1000  # Convert g to kg
-Annual_newT = 6.2
-newT = finaltimes.copy()
-for i in range(int(1/timestep*runtime)):
-    newT[i] = 6.2+29/2.0*math.sin(2*3.1415926*(finaltimes[i]-int(finaltimes[i])+1))
-# matplotlib.pyplot.plot(finaltimes,newT)
-# matplotlib.pyplot.show()
-newtheta = numpy.tile(theta, int(1/timestep*runtime))
+Nresorp = numpy.tile(results['Nresorp'], repeat_times)/1000  # Convert g to kg
+AnnualNresorp = sum(Nresorp)/runtime
 newtheta =  numpy.tile(results['SoilM'], repeat_times)
 Annual_newtheta = numpy.mean(newtheta)
 newT =  numpy.tile(results['SoilT'], repeat_times)
 Annual_newT = numpy.mean(newT)
+# Annual_newT = 6.2
+# newT = finaltimes.copy()
+# for i in range(int(1/timestep*runtime)):
+#     newT[i] = 6.2+29/2.0*math.sin(2*3.1415926*(finaltimes[i]-int(finaltimes[i])+1))
+# newtheta = numpy.tile(theta, int(1/timestep*runtime))
+# Annual_newtheta = numpy.mean(newtheta)
 MeanLeafN = numpy.mean(LeafN)
 MeanRootN = numpy.mean(RootN)
 AnnualNrootuptake = sum(Nrootuptake)/runtime
@@ -200,13 +201,15 @@ def experiment(plotnum,claynum,climnum):
                                              clay=clay[claynum], initvals=SOM_init, params=params,
                                              times=spinuptimes, Croot=Croot[climnum], NPP=AnnualNPP,
                                              ECM_pct=ECM_pct[plotnum] / 100, runtype='Spinup',
-                                             LeafN=MeanLeafN, RootN=MeanRootN, Nrootuptake=AnnualNrootuptake)
+                                             LeafN=MeanLeafN, RootN=MeanRootN, Nrootuptake=AnnualNrootuptake,
+                                             Nresorp=AnnualNresorp)
     result = CORPSE_integrate.run_CORPSE_iterator(T=newT, theta=newtheta, Ndemand=PlantNdemand,
                                                   inputs=dict([(k, newinputs[k][plotnum]) for k in newinputs]),
                                                   clay=clay[claynum], initvals=result.iloc[-1], params=params,
                                                   times=finaltimes, Croot=Croot[climnum], NPP=NPP,
                                                   ECM_pct=ECM_pct[plotnum] / 100,
                                                   LeafN=LeafN, RootN=RootN, Nrootuptake=Nrootuptake,
+                                                  Nresorp=Nresorp,
                                                   runtime=int(1/timestep*runtime),
                                                   plottime=int(1/timestep*plottime))
     filename = str(nclimates*nclays*plotnum+nclimates*claynum + climnum + 1)+'_Monthly_data.txt'

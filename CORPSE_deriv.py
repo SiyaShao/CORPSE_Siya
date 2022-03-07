@@ -84,7 +84,7 @@ def check_params(params):
 
 
 from numpy import zeros,size,where,atleast_1d,zeros_like
-def CORPSE_deriv(SOM,T,theta,Ndemand_Time,Croot,NPP,ECM_pct,LeafN,RootN,Nrootuptake,params,claymod=1.0):
+def CORPSE_deriv(SOM,T,theta,Ndemand_Time,Croot,NPP,ECM_pct,LeafN,RootN,Nrootuptake,Nresorp,params,claymod=1.0):
     '''Calculate rates of change for all CORPSE pools
        T: Temperature (K)
        theta: Soil water content (fraction of saturation)
@@ -278,7 +278,7 @@ def CORPSE_deriv(SOM,T,theta,Ndemand_Time,Croot,NPP,ECM_pct,LeafN,RootN,Nrootupt
 
     derivs['Int_ECMC'] = atleast_1d(max(0.0,NPP)*falloc*ECM_pct - Cacq_simb['ECM'])
     derivs['Int_AMC'] = atleast_1d(max(0.0,NPP)*falloc*(1-ECM_pct) - Cacq_simb['AM'])
-    derivs['Int_N'] = atleast_1d(Ntransfer+Nuptake_root-Ndemand_Time)
+    derivs['Int_N'] = atleast_1d(Ntransfer+Nuptake_root+Nresorp-Ndemand_Time)
 
     derivs['NfromNecro'] = atleast_1d(decomp['NecroN']*params['nup']['Necro'])
     derivs['NfromSOM'] = atleast_1d(nitrogen_supply['SAP'])

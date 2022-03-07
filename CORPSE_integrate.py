@@ -39,7 +39,7 @@ fields=CORPSE_deriv.expected_pools
 
 # This is a function that translates the CORPSE model pools to/from the format that the equation solver expects
 # The solver will call it multiple times and passes it a list of parameters that needs to be converted to a named "dictionary" that CORPSE expects
-def fsolve_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,Croot,NPP,ECM_pct,runtype,LeafN,RootN,Nrootuptake):
+def fsolve_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,Croot,NPP,ECM_pct,runtype,LeafN,RootN,Nrootuptake,Nresorp):
     from numpy import asarray,concatenate
 
     # Make an empty dictionary and fill it with the right values
@@ -62,7 +62,7 @@ def fsolve_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,Croot,NPP,E
         T = Ttimecoeff(times, T)
 
     # Call the CORPSE model function that returns the derivative (with time) of each pool
-    deriv=CORPSE_deriv.CORPSE_deriv(SOM_dict,T,theta,Ndemand_Time,Croot,NPP,ECM_pct,LeafN,RootN,Nrootuptake,params,
+    deriv=CORPSE_deriv.CORPSE_deriv(SOM_dict,T,theta,Ndemand_Time,Croot,NPP,ECM_pct,LeafN,RootN,Nrootuptake,Nresorp,params,
                                     claymod=CORPSE_deriv.prot_clay(clay)/CORPSE_deriv.prot_clay(20))
 
     for pool in inputs.keys():
@@ -82,14 +82,14 @@ def fsolve_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,Croot,NPP,E
 # The ordinary differential equation (ODE) integrating function also wants to send the current time to the function it's integrating
 # Our model doesn't have an explicit dependence on time, but we need a separate function that can deal with the extra argument.
 # We just ignore the time argument and pass the rest to the same function we used for the numerical solver
-def ode_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,Croot,NPP,ECM_pct,runtype,LeafN,RootN,Nrootuptake):
-    return fsolve_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,Croot,NPP,ECM_pct,runtype,LeafN,RootN,Nrootuptake)
+def ode_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,Croot,NPP,ECM_pct,runtype,LeafN,RootN,Nrootuptake,Nresorp):
+    return fsolve_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,Croot,NPP,ECM_pct,runtype,LeafN,RootN,Nrootuptake,Nresorp)
 
 def arrayify_dict(d):
     from numpy import atleast_1d
     return dict(((v,atleast_1d(d[v])) for v in d))
 
-def run_CORPSE_ODE(T,theta,Ndemand,inputs,clay,initvals,params,times,Croot,NPP,ECM_pct,runtype,LeafN,RootN,Nrootuptake):
+def run_CORPSE_ODE(T,theta,Ndemand,inputs,clay,initvals,params,times,Croot,NPP,ECM_pct,runtype,LeafN,RootN,Nrootuptake,Nresorp):
     # Use ODE integrator to actually integrate the model. Currently set up for constant temperature, moisture, and inputs
     # import time
     # t0=time.time()
@@ -103,7 +103,7 @@ def run_CORPSE_ODE(T,theta,Ndemand,inputs,clay,initvals,params,times,Croot,NPP,E
 
     # Runs the ODE integrator
     result=odeint(ode_wrapper,ivals,times,
-        args=(T+273.15,theta,Ndemand,inputs,clay,params,Croot,NPP,ECM_pct,runtype,LeafN,RootN,Nrootuptake))
+        args=(T+273.15,theta,Ndemand,inputs,clay,params,Croot,NPP,ECM_pct,runtype,LeafN,RootN,Nrootuptake,Nresorp))
 
     # Store the output in a pandas DataFrame (similar to R's dataframes)
     if not isinstance(initvals['SAPC'],float) and len(initvals['SAPC'])==2:
@@ -116,7 +116,7 @@ def run_CORPSE_ODE(T,theta,Ndemand,inputs,clay,initvals,params,times,Croot,NPP,E
 
     # print('Time elapsed: %1.1f s'%(time.time()-t0))
 
-def run_CORPSE_iterator(T,theta,Ndemand,inputs,clay,initvals,params,times,Croot,NPP,ECM_pct,LeafN,RootN,Nrootuptake,runtime,plottime):
+def run_CORPSE_iterator(T,theta,Ndemand,inputs,clay,initvals,params,times,Croot,NPP,ECM_pct,LeafN,RootN,Nrootuptake,Nresorp,runtime,plottime):
     # Run model with explicit timestepping. This allows arbitrary time series of T, theta, and inputs but may be slower/less accurate depending on time step length
     # Allows running a vector of points together which can be more efficient
     # To represent multiple soil compartments such as rhizosphere, litter layer, multiple soil layers, etc: Run with a vector of cells representing the different compartments
@@ -158,11 +158,11 @@ def run_CORPSE_iterator(T,theta,Ndemand,inputs,clay,initvals,params,times,Croot,
             theta_step=theta[step,:]
         else:
             theta_step=theta[step]
-        #print(times[step],T_step,theta_step,Ndemand[step],Croot,NPP[step],ECM_pct,LeafN[step],RootN[step],Nrootuptake[step])
+        #print(times[step],T_step,theta_step,Ndemand[step],Croot,NPP[step],ECM_pct,LeafN[step],RootN[step],Nrootuptake[step],Nresorp[step])
         # In this case, T, theta, clay, and all the pools in SOM are vectors containing one value per geographical location
         #deriv=CORPSE_deriv.CORPSE_deriv(SOM,T_step+273.15,theta_step,params,claymod=CORPSE_deriv.prot_clay(clay)/CORPSE_deriv.prot_clay(20))
         deriv = CORPSE_deriv.CORPSE_deriv(SOM,T_step+273.15,theta_step,Ndemand[step],Croot,NPP[step],ECM_pct,LeafN[step],
-                                          RootN[step],Nrootuptake[step],params,claymod=CORPSE_deriv.prot_clay(clay)/CORPSE_deriv.prot_clay(20))
+                                          RootN[step],Nrootuptake[step],Nresorp[step],params,claymod=CORPSE_deriv.prot_clay(clay)/CORPSE_deriv.prot_clay(20))
 
         # Inputs and N uptake calculations below can be improved in the future to include plant C allocation to mycorrhizae (via FUN), plant N uptake and demand, etc
 
