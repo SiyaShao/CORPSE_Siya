@@ -24,18 +24,21 @@ def data_ncfile(placename):
     LeafN = LeafC / LeafCN
     LitterC = dataset.variables['LITFALL'][:]*converter
     Leaf_litterC = dataset.variables['LEAFC_TO_LITTER'][:]*converter
-    Root_litterC = LitterC - Leaf_litterC
-    RLratio = sum(Root_litterC[:])/sum(Leaf_litterC[:])
-    RootC = RLratio * LeafC
-    RootN = (RootC / RootCN)
-    LitterN = Leaf_litterC / Leaf_litterCN + Root_litterC / Root_litterCN
-    Nresorp = Leaf_litterC / LeafCN + Root_litterC / RootCN - LitterN
+    Leaf_litterN = dataset.variables['LEAFN_TO_LITTER'][:]*converter
+    Root_litterC = dataset.variables['FROOTC_TO_LITTER'][:]*converter
+    Root_litterN = dataset.variables['FROOTN_TO_LITTER'][:]*converter
+    RootC = dataset.variables['FROOTC'][:]
+    RootN = dataset.variables['FROOTN'][:]
+    Nresorp = Leaf_litterC / LeafCN - Leaf_litterN  # Only leaves resorb N
+    LitterN = LitterC*sum(PlantNdemand-Nresorp)/sum(LitterC)
     SoilT = dataset.variables['TSOI_10CM'][:] - 273.15
-    SoilM = dataset.variables['H2OSOI'][:, 3, 0]
+    SoilM = 0.25*(dataset.variables['H2OSOI'][:, 0, 0]+dataset.variables['H2OSOI'][:, 1, 0]+
+                  dataset.variables['H2OSOI'][:, 2, 0]+dataset.variables['H2OSOI'][:, 3, 0])
+    Ndep = dataset.variables['NDEP_TO_SMINN'][:] * converter
 
     result_df = pd.DataFrame({'NPP': NPP.ravel(), 'LeafN': LeafN.ravel(), 'RootN': RootN.ravel(), 'PlantNdemand': PlantNdemand.ravel(),
                               'Nrootuptake': Nrootuptake.ravel(), 'LitterC': LitterC.ravel(), 'LitterN': LitterN.ravel(),
-                              'Nresorp': Nresorp.ravel(), 'SoilT': SoilT.ravel(), 'SoilM': SoilM.ravel()})
+                              'Nresorp': Nresorp.ravel(), 'Ndep': Ndep.ravel(), 'SoilT': SoilT.ravel(), 'SoilM': SoilM.ravel()})
     return result_df
 
 if __name__ == '__main__':

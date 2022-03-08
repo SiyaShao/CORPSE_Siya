@@ -130,7 +130,7 @@ theta = 0.5  # fraction of saturation
 spinuptimes = numpy.arange(0, 2500,
                      10)  # 10-year time steps for model spinup as spinning up on finer timestep would take too long
 timestep = 1/365.0  # Daily
-results = data_ncfile.data_ncfile('CW-CS01')  # US-Ho1, CW-CS01, US-WCr
+results = data_ncfile.data_ncfile('US-Ho1')  # US-Ho1, CW-CS01, US-WCr
 ELMresult_time = int(len(results['NPP'])*timestep)  # The nc files of ELM outputs contain 10 years of data for now
 runtime = 10*ELMresult_time  # Run the model after spinup for runtime years
 plottime = 10  # Only plot the results for the last plottime years
@@ -140,12 +140,18 @@ plottimes = numpy.arange(timestep, plottime + timestep, timestep)
 timesteps = len(plottimes)  # According to what is set for times in the above lines (numpy.arrange)
 # The ODE solver uses an adaptive timestep but will return these time points
 
+params['N_deposition'] = sum(results['Ndep'])/ELMresult_time/1000  # Convert g to kg
 total_inputs_C = numpy.tile(results['LitterC'], repeat_times)/1000  # Convert g to kg
 total_inputs_N = numpy.tile(results['LitterN'], repeat_times)/1000  # Convert g to kg
 PlantNdemand = numpy.tile(results['PlantNdemand'], repeat_times)/1000  # Convert g to kg
 Nrootuptake = numpy.tile(results['Nrootuptake'], repeat_times)/1000  # Convert g to kg
 LeafN = numpy.tile(results['LeafN'], repeat_times)/1000  # Convert g to kg
 RootN = numpy.tile(results['RootN'], repeat_times)/1000  # Convert g to kg
+for i in range(len(LeafN)):
+    leftbound = max(0,int(i/365)-1)
+    LeafN[i] = max(LeafN[leftbound*365:(leftbound+1)*365])
+    RootN[i] = max(RootN[leftbound*365:(leftbound+1)*365])
+    # Target LeafN and RootN are the peak LeafN and RootN values in the last growing season
 NPP = results['NPP']
 # NPP[NPP<0] = 0.0
 NPP = numpy.tile(NPP, repeat_times)/1000  # Convert g to kg
@@ -513,6 +519,13 @@ for plotnum in range(len(ECM_pct)):
             plt.xlabel('Time (year)')
             if climnum == 0:
                 plt.ylabel('SAP N limit status (%)')
+
+plt.figure('Long-term SAP', figsize=(6, 8));
+plt.clf()
+for plotnum in range(len(ECM_pct)):
+    plt.plot(plottimes, plot_SAPC_all[:,plotnum,0,0],c=cmapECM(normECM(ECM_pct[plotnum])))
+    plt.xlabel('Time (year)')
+    plt.ylabel('SAP biomass C (KgC/m2)')
 
 plt.figure('Long-term SAP N limit status', figsize=(6, 8));
 plt.clf()
