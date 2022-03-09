@@ -196,8 +196,8 @@ def CORPSE_deriv(SOM,T,theta,Ndemand_Time,Croot,NPP,ECM_pct,LeafN,RootN,Nrootupt
     Density_root = 122 # From Fatichi et al.,(2019)
     R_root = 0.00029 # Radius of root from Kou-Giesbrecht et al.,(2021)
     RLD = Croot/Density_root/R_root/R_root # Calculate root length density from Fatichi et al.,(2019)
+    VRL = RLD/(2*params['depth']) # Volumetric root length, considering the whole root profile to be twice the params['depth']
     R_rhiz = 0.001 # Radius of rhizosphere from Sulman et al.,(2019)
-    VRL = RLD*0.5 # Volumetric root length, considering the whole root profile to be 0.5 meters
     F_rhiz = 3.1415926*VRL*((R_rhiz+R_root)*(R_rhiz+R_root)-R_root*R_root)
     rNH4 = 0.1 # Maximum root active N uptake rate (kgN/m3/yr) from Sulman et al.(2019)
     km_nh4_root = 0.001 # Assumed to be the same as AM uptake for now

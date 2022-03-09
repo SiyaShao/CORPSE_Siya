@@ -100,8 +100,8 @@ nclimates = 1
 ECM_pct = numpy.linspace(0, 100, nplots)  # Percent ECM basal area
 MAT = numpy.linspace(5, 20, nclimates)  # degrees C
 clay = numpy.linspace(10, 70, nclays)  # percent clay
-Croot= [0.275, 0.375, 0.45] # Deciduous: Boreal 593g/m2, Temperate 687g/m2, Tropical 1013g/m2
-                   # Evergreen: Boreal 515g/m2, Temperate 836g/m2, Tropical  724g/m2, from Finér et al.,(2011)
+# Croot= [0.275, 0.375, 0.45] # Deciduous: Boreal 593g/m2, Temperate 687g/m2, Tropical 1013g/m2
+#                    # Evergreen: Boreal 515g/m2, Temperate 836g/m2, Tropical  724g/m2, from Finér et al.,(2011)
 
 fastfrac_AM = 0.4
 fastfrac_ECM = 0.1
@@ -147,11 +147,16 @@ PlantNdemand = numpy.tile(results['PlantNdemand'], repeat_times)/1000  # Convert
 Nrootuptake = numpy.tile(results['Nrootuptake'], repeat_times)/1000  # Convert g to kg
 LeafN = numpy.tile(results['LeafN'], repeat_times)/1000  # Convert g to kg
 RootN = numpy.tile(results['RootN'], repeat_times)/1000  # Convert g to kg
+Croot = numpy.tile(results['RootC'], repeat_times)/1000  # Convert g to kg
 for i in range(len(LeafN)):
     leftbound = max(0,int(i/365)-1)
     LeafN[i] = max(LeafN[leftbound*365:(leftbound+1)*365])
     RootN[i] = max(RootN[leftbound*365:(leftbound+1)*365])
     # Target LeafN and RootN are the peak LeafN and RootN values in the last growing season
+GS_Croot = 0.0
+for i in range(ELMresult_time):
+    leftbound = i*365+90
+    GS_Croot += 1/ELMresult_time*numpy.mean(Croot[leftbound:(leftbound+180)]) # mean growing-season Croot
 NPP = results['NPP']
 # NPP[NPP<0] = 0.0
 NPP = numpy.tile(NPP, repeat_times)/1000  # Convert g to kg
@@ -205,14 +210,14 @@ def experiment(plotnum,claynum,climnum):
     result = CORPSE_integrate.run_CORPSE_ODE(T=Annual_newT, theta=Annual_newtheta, Ndemand=Annual_PlantNdemand,
                                              inputs=dict([(k, inputs[k][plotnum]) for k in inputs]),
                                              clay=clay[claynum], initvals=SOM_init, params=params,
-                                             times=spinuptimes, Croot=Croot[climnum], NPP=AnnualNPP,
+                                             times=spinuptimes, Croot=GS_Croot, NPP=AnnualNPP,
                                              ECM_pct=ECM_pct[plotnum] / 100, runtype='Spinup',
                                              LeafN=MeanLeafN, RootN=MeanRootN, Nrootuptake=AnnualNrootuptake,
                                              Nresorp=AnnualNresorp)
     result = CORPSE_integrate.run_CORPSE_iterator(T=newT, theta=newtheta, Ndemand=PlantNdemand,
                                                   inputs=dict([(k, newinputs[k][plotnum]) for k in newinputs]),
                                                   clay=clay[claynum], initvals=result.iloc[-1], params=params,
-                                                  times=finaltimes, Croot=Croot[climnum], NPP=NPP,
+                                                  times=finaltimes, Croot=Croot, NPP=NPP,
                                                   ECM_pct=ECM_pct[plotnum] / 100,
                                                   LeafN=LeafN, RootN=RootN, Nrootuptake=Nrootuptake,
                                                   Nresorp=Nresorp,

@@ -158,10 +158,10 @@ def run_CORPSE_iterator(T,theta,Ndemand,inputs,clay,initvals,params,times,Croot,
             theta_step=theta[step,:]
         else:
             theta_step=theta[step]
-        #print(times[step],T_step,theta_step,Ndemand[step],Croot,NPP[step],ECM_pct,LeafN[step],RootN[step],Nrootuptake[step],Nresorp[step])
+
         # In this case, T, theta, clay, and all the pools in SOM are vectors containing one value per geographical location
         #deriv=CORPSE_deriv.CORPSE_deriv(SOM,T_step+273.15,theta_step,params,claymod=CORPSE_deriv.prot_clay(clay)/CORPSE_deriv.prot_clay(20))
-        deriv = CORPSE_deriv.CORPSE_deriv(SOM,T_step+273.15,theta_step,Ndemand[step],Croot,NPP[step],ECM_pct,LeafN[step],
+        deriv = CORPSE_deriv.CORPSE_deriv(SOM,T_step+273.15,theta_step,Ndemand[step],Croot[step],NPP[step],ECM_pct,LeafN[step],
                                           RootN[step],Nrootuptake[step],Nresorp[step],params,claymod=CORPSE_deriv.prot_clay(clay)/CORPSE_deriv.prot_clay(20))
 
         # Inputs and N uptake calculations below can be improved in the future to include plant C allocation to mycorrhizae (via FUN), plant N uptake and demand, etc
