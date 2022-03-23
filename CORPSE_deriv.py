@@ -45,8 +45,8 @@ expected_pools = ['u'+t+'C' for t in chem_types]+\
                  [mt+'C' for mt in mic_types]   +\
                  [mt+'N' for mt in mic_types]   +\
                  ['CO2','inorganicN']           +\
-                 ['Int_ECMC', 'Int_AMC', 'Int_N' , 'NfromNecro', 'NfromSOM', 'Nlimit']+\
-                 ['Ntransfer','Ntransfer_ECM','Ntransfer_AM','Nrootuptake','falloc']
+                 ['Int_ECMC', 'Int_AMC', 'Int_N_ECM', 'Int_N_AM', 'NfromNecro', 'NfromSOM', 'Nlimit']+\
+                 ['Ntransfer','Ntransfer_ECM','Ntransfer_AM','Nrootuptake','falloc_ECM','falloc_AM']
 #                 ['livingMicrobeC','livingMicrobeN','CO2','inorganicN',]
 
 
@@ -195,16 +195,41 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,ECM_pc
     #                # Evergreen: Boreal 515g/m2, Temperate 836g/m2, Tropical  724g/m2, from Finér et al.,(2011)
     Density_root = 122 # From Fatichi et al.,(2019)
     R_root = 0.00029 # Radius of root from Kou-Giesbrecht et al.,(2021)
-    RLD = Croot/Density_root/R_root/R_root # Calculate root length density from Fatichi et al.,(2019)
     R_rhiz = 0.001 # Radius of rhizosphere from Sulman et al.,(2019)
-    VRL = RLD*0.5 # Volumetric root length, considering the whole root profile to be 0.5 meters
-    F_rhiz = 3.1415926*VRL*((R_rhiz+R_root)*(R_rhiz+R_root)-R_root*R_root)
-    rNH4 = 0.1 # Maximum root active N uptake rate (kgN/m3/yr) from Sulman et al.(2019)
-    km_nh4_root = 0.001 # Assumed to be the same as AM uptake for now
+    SRL = 24545 # mKg/C, specific root length from Kou-Giesbrecht et al.,(2021)
+    F_rhiz = 3.1415926*((R_rhiz+R_root)*(R_rhiz+R_root)-R_root*R_root)*Croot*SRL/params['depth']
+    rNH4 = 1.0 # Maximum root active N uptake rate (kgN/m3/yr) from Sulman et al.(2019)
+    km_nh4_root = 0.005 # Half-saturation NH4 concentration for root active uptake (kgN m-3) from Sulman et al.(2019)
 
-    Nstress = max(0.0,(4*Ndemand-SOM['Int_N'])/(4*Ndemand))
-    Nuptake_root = Nstress*F_rhiz*rNH4*SOM['inorganicN'] / (SOM['inorganicN'] + km_nh4_root * params['depth'])
-    falloc = max(0.0,(4*Ndemand-SOM['Int_N'])/(4*Ndemand)*params['falloc_base'])
+    # Nstress = max(0.0,(4*Ndemand-SOM['Int_N_ECM'])/(4*Ndemand))
+    # Nuptake_root = Nstress*F_rhiz*rNH4*SOM['inorganicN'] / (SOM['inorganicN'] + km_nh4_root * params['depth'])
+    # falloc = max(0.0,(4*Ndemand-SOM['Int_N_ECM'])/(4*Ndemand)*params['falloc_base'])
+
+    F_rhiz_myc = {'ECM':0.0,'AM':0.0}
+    Nstress_myc = {'ECM':0.0,'AM':0.0}
+    Ndemand_myc = {'ECM':0.0,'AM':0.0}
+    Ndemand_Time_myc = {'ECM':0.0,'AM':0.0}
+    Nuptake_root_myc = {'ECM':0.0,'AM':0.0}
+    falloc_myc = {'ECM':0.0,'AM':0.0}
+    Ntransfer_myc = {'ECM':0.0,'AM':0.0}
+    litter_CN_ECM = 50
+    litter_CN_AM = 30
+    Annuallitter = 0.5
+    F_rhiz_myc['ECM'] = F_rhiz*ECM_pct
+    F_rhiz_myc['AM'] = F_rhiz-F_rhiz_myc['ECM']
+    Ndemand_myc['ECM'] = Annuallitter*ECM_pct/litter_CN_ECM
+    Ndemand_myc['AM'] = Annuallitter*(1-ECM_pct)/litter_CN_AM
+    if Ndemand_myc['ECM']+Ndemand_myc['AM']>0.0:
+        Ndemand_Time_myc['ECM'] = Ndemand_Time*Ndemand_myc['ECM']/(Ndemand_myc['ECM']+Ndemand_myc['AM'])
+        Ndemand_Time_myc['AM'] = Ndemand_Time*Ndemand_myc['AM']/(Ndemand_myc['ECM']+Ndemand_myc['AM'])
+    for mt in mic_types:
+        if mt != 'SAP':
+            if Ndemand_myc[mt]>0.0:
+                Nstress_myc[mt] = max(0.0,(4*Ndemand_myc[mt]-SOM['Int_N_'+mt])/(4*Ndemand_myc[mt]))
+                Nuptake_root_myc[mt] = Nstress_myc[mt]*F_rhiz_myc[mt]*rNH4*SOM['inorganicN'] / (SOM['inorganicN'] + km_nh4_root * params['depth'])\
+                                       * params['depth'] * T_factor(T,params,'InorgN')
+                falloc_myc[mt] = Nstress_myc[mt]*params['falloc_base']
+                Ntransfer_myc[mt] = max(0.0,CN_imbalance_term[mt])
     # If mycorrhizal fungi transfer too much N to plants (N_int pool exceeding 2*Ndemand), then mycorrhizal N acquisition
     # is decreased accordingly. This will not be needed once coupled to a plant growth model.
     Ntransfer = max(0.0,CN_imbalance_term['ECM']) + max(0.0,CN_imbalance_term['AM'])
@@ -276,20 +301,22 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,ECM_pc
     derivs['AMC'] = atleast_1d(dmicrobeC['AM'])
     derivs['AMN'] = atleast_1d(dmicrobeN['AM'])
 
-    derivs['Int_ECMC'] = atleast_1d(totinputs*falloc*ECM_pct - Cacq_simb['ECM'])
-    derivs['Int_AMC'] = atleast_1d(totinputs*falloc*(1-ECM_pct) - Cacq_simb['AM'])
-    derivs['Int_N'] = atleast_1d(Ntransfer+Nuptake_root-Ndemand_Time)
+    derivs['Int_ECMC'] = atleast_1d(totinputs*falloc_myc['ECM']*ECM_pct - Cacq_simb['ECM'])
+    derivs['Int_AMC'] = atleast_1d(totinputs*falloc_myc['AM']*(1-ECM_pct) - Cacq_simb['AM'])
+    derivs['Int_N_ECM'] = atleast_1d(Ntransfer_myc['ECM']+Nuptake_root_myc['ECM']-Ndemand_Time_myc['ECM'])
+    derivs['Int_N_AM'] = atleast_1d(Ntransfer_myc['AM'] + Nuptake_root_myc['AM'] - Ndemand_Time_myc['AM'])
 
     derivs['NfromNecro'] = atleast_1d(decomp['NecroN']*params['nup']['Necro'])
     derivs['NfromSOM'] = atleast_1d(nitrogen_supply['SAP'])
     derivs['Nlimit'] = atleast_1d(Nlimit_SAP)
 
     derivs['Ntransfer'] = atleast_1d(Ntransfer)
-    derivs['Ntransfer_ECM'] = atleast_1d(max(0.0,CN_imbalance_term['ECM'])-Nmining_d)
-    derivs['Ntransfer_AM'] = atleast_1d(max(0.0,CN_imbalance_term['AM'])-Nscavenging_d)
-    derivs['Nrootuptake'] = atleast_1d(Nuptake_root)
+    derivs['Ntransfer_ECM'] = atleast_1d(max(0.0,CN_imbalance_term['ECM']))
+    derivs['Ntransfer_AM'] = atleast_1d(max(0.0,CN_imbalance_term['AM']))
+    derivs['Nrootuptake'] = atleast_1d(Nuptake_root_myc['ECM']+Nuptake_root_myc['AM'])
 
-    derivs['falloc'] = atleast_1d(falloc)
+    derivs['falloc_ECM'] = atleast_1d(falloc_myc['ECM'])
+    derivs['falloc_AM'] = atleast_1d(falloc_myc['AM'])
 
     return derivs
 

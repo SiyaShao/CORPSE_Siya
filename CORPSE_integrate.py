@@ -25,7 +25,7 @@ def Ttimecoeff(time,T):
         Tem_diff = 20.0
     else:
         Tem_diff = 30.0
-    Ttimecoeff = T + Tem_diff/2.0*math.sin(2*math.pi*(timestep+1.0))
+    Ttimecoeff = T + Tem_diff/2.0*math.sin(2*math.pi*(timestep+0.7))
     return Ttimecoeff
 
 def NPPtimecoeff(time):
