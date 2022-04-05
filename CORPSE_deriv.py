@@ -84,7 +84,7 @@ def check_params(params):
 
 
 from numpy import zeros,size,where,atleast_1d,zeros_like
-def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,ECM_pct,params,claymod=1.0):
+def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,litter_ECM,litter_AM,totlitter,ECM_pct,params,claymod=1.0):
     '''Calculate rates of change for all CORPSE pools
        T: Temperature (K)
        theta: Soil water content (fraction of saturation)
@@ -212,9 +212,9 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,ECM_pc
     Nuptake_root_myc = {'ECM':0.0,'AM':0.0}
     falloc_myc = {'ECM':0.0,'AM':0.0}
     Ntransfer_myc = {'ECM':0.0,'AM':0.0}
-    litter_CN_ECM = 50
-    litter_CN_AM = 30
-    Annuallitter = 0.5
+    litter_CN_ECM = litter_ECM
+    litter_CN_AM = litter_AM
+    Annuallitter = totlitter
     F_rhiz_myc['ECM'] = F_rhiz*ECM_pct
     F_rhiz_myc['AM'] = F_rhiz-F_rhiz_myc['ECM']
     Ndemand_myc['ECM'] = Annuallitter*ECM_pct/litter_CN_ECM
@@ -225,7 +225,7 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,ECM_pc
     for mt in mic_types:
         if mt != 'SAP':
             if Ndemand_myc[mt]>0.0:
-                Nstress_myc[mt] = max(0.0,(4*Ndemand_myc[mt]-SOM['Int_N_'+mt])/(4*Ndemand_myc[mt]))
+                Nstress_myc[mt] = min(1.0,max(0.0,(2*Ndemand_myc[mt]-SOM['Int_N_'+mt])/(2*Ndemand_myc[mt])))
                 Nuptake_root_myc[mt] = Nstress_myc[mt]*F_rhiz_myc[mt]*rNH4*SOM['inorganicN'] / (SOM['inorganicN'] + km_nh4_root * params['depth'])\
                                        * params['depth'] * T_factor(T,params,'InorgN')
                 falloc_myc[mt] = Nstress_myc[mt]*params['falloc_base']
@@ -301,8 +301,12 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,ECM_pc
     derivs['AMC'] = atleast_1d(dmicrobeC['AM'])
     derivs['AMN'] = atleast_1d(dmicrobeN['AM'])
 
-    derivs['Int_ECMC'] = atleast_1d(totinputs*falloc_myc['ECM']*ECM_pct - Cacq_simb['ECM'])
-    derivs['Int_AMC'] = atleast_1d(totinputs*falloc_myc['AM']*(1-ECM_pct) - Cacq_simb['AM'])
+    Rate_exude = 0.5
+    Exu_ECM = Rate_exude * SOM['Int_ECMC']
+    Exu_AM = Rate_exude * SOM['Int_AMC']
+    derivs['uFastC'] += Exu_ECM + Exu_AM
+    derivs['Int_ECMC'] = atleast_1d(totinputs * falloc_myc['ECM'] * ECM_pct - Cacq_simb['ECM'] - Exu_ECM)
+    derivs['Int_AMC'] = atleast_1d(totinputs * falloc_myc['AM'] * (1 - ECM_pct) - Cacq_simb['AM'] - Exu_AM)
     derivs['Int_N_ECM'] = atleast_1d(Ntransfer_myc['ECM']+Nuptake_root_myc['ECM']-Ndemand_Time_myc['ECM'])
     derivs['Int_N_AM'] = atleast_1d(Ntransfer_myc['AM'] + Nuptake_root_myc['AM'] - Ndemand_Time_myc['AM'])
 

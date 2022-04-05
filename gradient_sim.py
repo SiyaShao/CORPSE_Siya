@@ -44,8 +44,8 @@ SOM_init = {'uFastC': 0.1,
 # Set model parameters
 # Note that carbon types have names, in contrast to previous version
 params = {
-    'vmaxref': {'Fast': 9.0, 'Slow': .5, 'Necro': 4.5},  # Relative maximum enzymatic decomp rates (year-1)
-    'Ea': {'Fast': 5e3, 'Slow': 30e3, 'Necro': 3e3},
+    'vmaxref': {'Fast': 18.0, 'Slow': .5, 'Necro': 4.5},  # Relative maximum enzymatic decomp rates (year-1)
+    'Ea': {'Fast': 6e3, 'Slow': 40e3, 'Necro': 6e3},
     # Activation energy (Controls temperature sensitivity via Arrhenius relationship)
     'kC': {'Fast': 0.01, 'Slow': 0.01, 'Necro': 0.01},  # Michaelis-Menton parameter
     'gas_diffusion_exp': 0.6,  # Determines suppression of decomp at high soil moisture
@@ -56,10 +56,10 @@ params = {
     'et': {'SAP': 0.6, 'ECM': 0.6, 'AM': 0.6},  # Fraction of turnover not converted to CO2 (dimensionless)
     'eup': {'Fast': 0.6, 'Slow': 0.05, 'Necro': 0.6},  # Carbon uptake efficiency (dimensionless fraction)
     'tProtected': 75.0,  # Protected C turnoveir time (years)
-    'protection_rate': {'Fast': 0.1, 'Slow': 0.0001, 'Necro': 1.5},  # Protected carbon formation rate (year-1)
+    'protection_rate': {'Fast': 1.0, 'Slow': 0.0025, 'Necro': 1.0},  # Protected carbon formation rate (year-1)
     'new_resp_units': True,
     'frac_N_turnover_min': 0.2,
-    'frac_turnover_slow': {'SAP': 0.2, 'ECM': 0.2, 'AM': 0.2},
+    'frac_turnover_slow': {'SAP': 0.5, 'ECM': 0.8, 'AM': 0.2},
     'nup': {'Fast': 0.9, 'Slow': 0.6, 'Necro': 0.9},
     'CN_microbe': {'SAP':8.0,'ECM':14.0,'AM':10.0},
     'max_immobilization_rate': 3.65,
@@ -78,7 +78,7 @@ params = {
     'Ea_inorgN': 37e3,  # (kJ/mol) Activation energy for immobilization of inorganic N from Sulman et al., (2019)
     'Ea_turnover': 20e3, # (kJ/mol) Activation energy for microbial turnover from Wang et al., (2013)
     'depth': 0.15, # 15cm, assumed for now.
-    'iN_loss_rate': 10.0, # Loss rate from inorganic N pool (year-1). >1 since it takes much less than a year for it to be removed
+    'iN_loss_rate': 30.0, # Loss rate from inorganic N pool (year-1). >1 since it takes much less than a year for it to be removed
     'N_deposition': 0.001,  # Annual nitrogen deposition 1.0gN/m2/yr
     'kG_simb': 0.3, # Half-saturation of intermediate C pool for symbiotic growth (kg C m-2)'
     'rgrowth_simb': 0.3, # Maximum growth rate of mycorrhizal fungi (kg C m-2 year-1)
@@ -157,11 +157,13 @@ def experiment(plotnum,claynum,climnum):
                                              inputs=dict([(k, inputs[k][plotnum]) for k in inputs]),
                                              clay=clay[claynum], initvals=SOM_init, params=params,
                                              times=spinuptimes, Croot=Croot[climnum], totinputs=total_inputs,
+                                             litter_ECM=litter_CN_ECM, litter_AM=litter_CN_AM, totlitter=total_inputs,
                                              ECM_pct=ECM_pct[plotnum] / 100, runtype='Spinup')
     result = CORPSE_integrate.run_CORPSE_ODE(T=MAT[climnum], theta=theta, Ndemand=Ndemand,
                                              inputs=dict([(k, inputs[k][plotnum]) for k in inputs]),
                                              clay=clay[claynum], initvals=result.iloc[-1], params=params,
                                              times=finaltimes, Croot=Croot[climnum], totinputs=total_inputs,
+                                             litter_ECM=litter_CN_ECM, litter_AM=litter_CN_AM, totlitter=total_inputs,
                                              ECM_pct=ECM_pct[plotnum] / 100, runtype='Final')
     for timenum in range(timesteps):
         filename = str(nclimates*nclays*plotnum+nclimates*claynum + climnum + 1)+'_Monthly_data.txt'
@@ -205,7 +207,7 @@ plot_falloc_AM,plot_falloc_ECM = data.copy(),data.copy()
 for plotnum in range(nplots):
     for claynum in range(nclays):
         for climnum in range(nclimates):
-            filename = "D:/Postdoc/CORPSE_Siya/" + str(nclimates * nclays * plotnum + nclimates * claynum + climnum + 1)\
+            filename = "/Users/f0068s6/PycharmProjects/CORPSE_Siya/" + str(nclimates * nclays * plotnum + nclimates * claynum + climnum + 1)\
                        + '_Monthly_data.txt'
             result = pandas.read_csv(filename)
             plot_InorgN_all[:, plotnum, claynum, climnum] = result['inorganicN']
