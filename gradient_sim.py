@@ -59,14 +59,14 @@ params = {
     'protection_rate': {'Fast': 1.0, 'Slow': 0.0025, 'Necro': 1.0},  # Protected carbon formation rate (year-1)
     'new_resp_units': True,
     'frac_N_turnover_min': 0.2,
-    'frac_turnover_slow': {'SAP': 0.5, 'ECM': 0.8, 'AM': 0.2},
+    'frac_turnover_slow': {'SAP': 0.5, 'ECM': 0.8, 'AM': 0.3},
     'nup': {'Fast': 0.9, 'Slow': 0.6, 'Necro': 0.9},
     'CN_microbe': {'SAP':8.0,'ECM':14.0,'AM':10.0},
     'max_immobilization_rate': 3.65,
     'substrate_diffusion_exp': 1.5,
     'new_resp_units': True,
     'eup_myc': {'ECM':0.5,'AM':0.5},
-    'max_mining_rate': {'Fast': 1.0, 'Slow': 0.6, 'Necro': 9.0},
+    'max_mining_rate': {'Fast': 1.0, 'Slow': 0.75, 'Necro': 6.0},
     # assumed to be more efficient with Slow and Necro pools, and less efficient with fast pools, compared to SAPs
     'kc_mining': 0.015, # g microbial biomass C/g substrate C, Sulman et al., (2019)
     'max_scavenging_rate': {'SAP':0.16,'ECM':0.0,'AM':0.2},
@@ -149,6 +149,8 @@ def experiment(plotnum,claynum,climnum):
               'uFastN': total_inputs * fastfrac_site / litter_CN_site,
               'uSlowN': total_inputs * (1 - fastfrac_site) / litter_CN_site}
     Ndemand = total_inputs/litter_CN_site
+    params['frac_turnover_slow']['SAP'] = 0.8 * numpy.exp(
+        -(fastfrac_ECM * ECM_pct[plotnum] / 100 + fastfrac_AM * (1 - ECM_pct[plotnum] / 100)))
     # Calculate plant Ndemand from N in litter production
     # Assuming plant N_litter balances plant N_uptake and plant not relying on roots
     # This will not be needed once the model is coupled with a plant model

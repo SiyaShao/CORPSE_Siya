@@ -301,7 +301,7 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,litter
     derivs['AMC'] = atleast_1d(dmicrobeC['AM'])
     derivs['AMN'] = atleast_1d(dmicrobeN['AM'])
 
-    Rate_exude = 0.5
+    Rate_exude = 1.0
     Exu_ECM = Rate_exude * SOM['Int_ECMC']
     Exu_AM = Rate_exude * SOM['Int_AMC']
     derivs['uFastC'] += Exu_ECM + Exu_AM
