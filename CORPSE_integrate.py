@@ -24,7 +24,7 @@ def Ttimecoeff(time,T):
     elif T-273.15 == 12.5:
         Tem_diff = 20.0
     else:
-        Tem_diff = 30.0
+        Tem_diff = 20.0
     Ttimecoeff = T + Tem_diff/2.0*math.sin(2*math.pi*(timestep+0.7))
     return Ttimecoeff
 

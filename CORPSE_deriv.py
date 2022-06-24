@@ -325,6 +325,14 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,litter
     derivs['NfromNecro'] = atleast_1d(decomp['NecroN']*params['nup']['Necro'])
     derivs['NfromSOM'] = atleast_1d(nitrogen_supply['SAP'])
     derivs['Nlimit'] = atleast_1d(Nlimit_SAP)
+    derivs['Nlimit'] = atleast_1d(Nuptake_root_myc['AM'] + Ntransfer_myc['AM'] - Ndemand_Time_myc['AM'])
+    # derivs['Nlimit'] = atleast_1d(Ntransfer_myc['AM'] + Ntransfer_myc['ECM']
+    #                               + Nuptake_root_myc['AM'] + Nuptake_root_myc['ECM']
+    #                               - Ndemand_Time_myc['AM'] - Ndemand_Time_myc['ECM'])
+    # derivs['Nlimit'] = atleast_1d(Ntransfer
+    #                               + Nuptake_root_myc['AM'] + Nuptake_root_myc['ECM']
+    #                               - Ndemand_Time_myc['AM'] - Ndemand_Time_myc['ECM'])
+    # derivs['Nlimit'] = atleast_1d(Ntransfer - Ntransfer_myc['ECM'] - Ntransfer_myc['AM'])
 
     derivs['Ntransfer'] = atleast_1d(Ntransfer)
     derivs['Ntransfer_ECM'] = atleast_1d(Ntransfer_myc['ECM'])
