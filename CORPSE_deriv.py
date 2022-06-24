@@ -219,6 +219,10 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,litter
     F_rhiz_myc['AM'] = F_rhiz-F_rhiz_myc['ECM']
     Ndemand_myc['ECM'] = Annuallitter*ECM_pct/litter_CN_ECM
     Ndemand_myc['AM'] = Annuallitter*(1-ECM_pct)/litter_CN_AM
+
+    excessN_AM = 0.0
+    excessN_ECM = {'Fast':0.0,'Slow':0.0,'Necro':0.0}
+
     if Ndemand_myc['ECM']+Ndemand_myc['AM']>0.0:
         Ndemand_Time_myc['ECM'] = Ndemand_Time*Ndemand_myc['ECM']/(Ndemand_myc['ECM']+Ndemand_myc['AM'])
         Ndemand_Time_myc['AM'] = Ndemand_Time*Ndemand_myc['AM']/(Ndemand_myc['ECM']+Ndemand_myc['AM'])
@@ -230,9 +234,15 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,litter
                                        * params['depth'] * T_factor(T,params,'InorgN')
                 falloc_myc[mt] = Nstress_myc[mt]*params['falloc_base']
                 Ntransfer_myc[mt] = max(0.0,CN_imbalance_term[mt])
+            else:
+                if mt == 'AM':
+                    excessN_AM = max(0.0,CN_imbalance_term[mt])
+                else:
+                    for t in chem_types:
+                        excessN_ECM[t] += max(0.0, CN_imbalance_term[mt])*Nmining[t+'N']/Nacq_simb_max['ECM']
     # If mycorrhizal fungi transfer too much N to plants (N_int pool exceeding 2*Ndemand), then mycorrhizal N acquisition
     # is decreased accordingly. This will not be needed once coupled to a plant growth model.
-    Ntransfer = max(0.0,CN_imbalance_term['ECM']) + max(0.0,CN_imbalance_term['AM'])
+    Ntransfer = Ntransfer_myc['AM']+Ntransfer_myc['ECM']
     Nmining_d = 0.0
     Nscavenging_d = 0.0
     # if Ntransfer>Ndemand:
@@ -274,8 +284,10 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,litter
     derivs['SAPN']=atleast_1d(dmicrobeN['SAP']) # Will change to "for mt in mic_types" later on for mycorrhizal fungi
     derivs['CO2'] =atleast_1d(CO2prod)
 
-    derivs['inorganicN'] += CN_imbalance_term['SAP']-nitrogen_supply['AM']-SOM['inorganicN']*params['iN_loss_rate'] + \
-        params['N_deposition']  # SAP net N mineralization + AM N scavenging - N loss + N deposition
+    derivs['inorganicN'] += CN_imbalance_term['SAP']-nitrogen_supply['AM']+excessN_AM\
+                            -SOM['inorganicN']*params['iN_loss_rate'] + params['N_deposition']\
+                            - Nuptake_root_myc['ECM'] - Nuptake_root_myc['AM']
+    # SAP net N mineralization + AM N scavenging - N loss + N deposition - Root uptake
 
     for t in chem_types:
         derivs['inorganicN'] += decomp[t+'N']*(1-params['nup'][t])
@@ -283,7 +295,7 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,litter
     for t in chem_types:
         derivs['u'+t+'C']=-decomp[t+'C']+protectedCturnover[t]-protectedCprod[t]
         derivs['p'+t+'C']=protectedCprod[t]-protectedCturnover[t]
-        derivs['u'+t+'N']=-decomp[t+'N']+protectedNturnover[t]-protectedNprod[t]-Nmining[t+'N']
+        derivs['u'+t+'N']=-decomp[t+'N']+protectedNturnover[t]-protectedNprod[t]-Nmining[t+'N']+excessN_ECM[t]
         # N loss in decomposition & N transferred to protected pools & N mining from ECM
         derivs['p'+t+'N']=protectedNprod[t]-protectedNturnover[t]
 
@@ -313,10 +325,18 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,litter
     derivs['NfromNecro'] = atleast_1d(decomp['NecroN']*params['nup']['Necro'])
     derivs['NfromSOM'] = atleast_1d(nitrogen_supply['SAP'])
     derivs['Nlimit'] = atleast_1d(Nlimit_SAP)
+    derivs['Nlimit'] = atleast_1d(Nuptake_root_myc['AM'] + Ntransfer_myc['AM'] - Ndemand_Time_myc['AM'])
+    # derivs['Nlimit'] = atleast_1d(Ntransfer_myc['AM'] + Ntransfer_myc['ECM']
+    #                               + Nuptake_root_myc['AM'] + Nuptake_root_myc['ECM']
+    #                               - Ndemand_Time_myc['AM'] - Ndemand_Time_myc['ECM'])
+    # derivs['Nlimit'] = atleast_1d(Ntransfer
+    #                               + Nuptake_root_myc['AM'] + Nuptake_root_myc['ECM']
+    #                               - Ndemand_Time_myc['AM'] - Ndemand_Time_myc['ECM'])
+    # derivs['Nlimit'] = atleast_1d(Ntransfer - Ntransfer_myc['ECM'] - Ntransfer_myc['AM'])
 
     derivs['Ntransfer'] = atleast_1d(Ntransfer)
-    derivs['Ntransfer_ECM'] = atleast_1d(max(0.0,CN_imbalance_term['ECM']))
-    derivs['Ntransfer_AM'] = atleast_1d(max(0.0,CN_imbalance_term['AM']))
+    derivs['Ntransfer_ECM'] = atleast_1d(Ntransfer_myc['ECM'])
+    derivs['Ntransfer_AM'] = atleast_1d(Ntransfer_myc['AM'])
     derivs['Nrootuptake'] = atleast_1d(Nuptake_root_myc['ECM']+Nuptake_root_myc['AM'])
 
     derivs['falloc_ECM'] = atleast_1d(falloc_myc['ECM'])

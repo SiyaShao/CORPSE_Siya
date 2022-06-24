@@ -77,8 +77,8 @@ params = {
     # kgN/m3, AM value is from Sulman et al., (2019), assumed to be the same for other microbes
     'Ea_inorgN': 37e3,  # (kJ/mol) Activation energy for immobilization of inorganic N from Sulman et al., (2019)
     'Ea_turnover': 20e3, # (kJ/mol) Activation energy for microbial turnover from Wang et al., (2013)
-    'depth': 0.15, # 15cm, assumed for now.
-    'iN_loss_rate': 30.0, # Loss rate from inorganic N pool (year-1). >1 since it takes much less than a year for it to be removed
+    'depth': 0.10, # 10cm, assumed for now.
+    'iN_loss_rate': 10.0, # Loss rate from inorganic N pool (year-1). >1 since it takes much less than a year for it to be removed
     'N_deposition': 0.001,  # Annual nitrogen deposition 1.0gN/m2/yr
     'kG_simb': 0.3, # Half-saturation of intermediate C pool for symbiotic growth (kg C m-2)'
     'rgrowth_simb': 0.3, # Maximum growth rate of mycorrhizal fungi (kg C m-2 year-1)
@@ -99,11 +99,11 @@ nclimates = 3
 ECM_pct = numpy.linspace(0, 100, nplots)  # Percent ECM basal area
 MAT = numpy.linspace(5, 20, nclimates)  # degrees C
 clay = numpy.linspace(10, 70, nclays)  # percent clay
-Croot= [0.275, 0.375, 0.45] # Deciduous: Boreal 593g/m2, Temperate 687g/m2, Tropical 1013g/m2
+Croot= [0.375, 0.375, 0.375] # Deciduous: Boreal 593g/m2, Temperate 687g/m2, Tropical 1013g/m2
                    # Evergreen: Boreal 515g/m2, Temperate 836g/m2, Tropical  724g/m2, from Finér et al.,(2011)
 
-fastfrac_AM = 0.7
-fastfrac_ECM = 0.1
+fastfrac_AM = 0.5
+fastfrac_ECM = 0.5
 fastfrac_site = fastfrac_ECM * ECM_pct / 100 + fastfrac_AM * (1 - ECM_pct / 100)
 litter_CN_AM = 30
 litter_CN_ECM = 50
@@ -193,10 +193,10 @@ plot_NfromSOM_all, plot_Nsource_all, plot_Nlimit_all, plot_Nlimit_acc = data.cop
                                                                         data.copy(), data.copy(), data.copy(), \
                                                                         data.copy(), data.copy(), data.copy(), \
                                                                         data.copy(), data.copy()
-plot_IntN_ECM_all, plot_Nrootuptake_all, plot_Ntransfer_all, plot_Ntransfer_ECM_all, plot_Ntransfer_AM_all, \
+plot_IntN_AM_all, plot_IntN_ECM_all, plot_Nrootuptake_all, plot_Ntransfer_all, plot_Ntransfer_ECM_all, plot_Ntransfer_AM_all, \
 plot_Nrootuptake_acc, plot_Ntransfer_acc, plot_Ntransfer_ECM_acc, plot_Ntransfer_AM_acc, \
 plot_falloc_ECM_all, plot_falloc_ECM_acc = data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), \
-                                   data.copy(), data.copy(), data.copy(), data.copy(), data.copy()
+                                   data.copy(), data.copy(), data.copy(), data.copy(), data.copy(), data.copy()
 plot_IntECMC_all, plot_TotC_all, plot_falloc_AM_all, plot_falloc_AM_acc = data.copy(), data.copy(), data.copy(), data.copy()
 data = numpy.zeros([nplots, nclays, nclimates])  # Store the annual data of the last year
 plot_InorgN, plot_SAPC, plot_UnpC, plot_ECMC, plot_AMC, plot_TotN, plot_NfromNecro, plot_NfromSOM, plot_Nsource, \
@@ -224,6 +224,7 @@ for plotnum in range(nplots):
             plot_NfromNecro_all[:, plotnum, claynum, climnum] = result['NfromNecro']
             plot_NfromSOM_all[:, plotnum, claynum, climnum] = result['NfromSOM']
             plot_Nlimit_acc[:, plotnum, claynum, climnum] = result['Nlimit']
+            plot_IntN_AM_all[:, plotnum, claynum, climnum] = result['Int_N_AM']
             plot_IntN_ECM_all[:, plotnum, claynum, climnum] = result['Int_N_ECM']
             plot_Ntransfer_acc[:, plotnum, claynum, climnum] = result['Ntransfer']
             plot_Ntransfer_ECM_acc[:, plotnum, claynum, climnum] = result['Ntransfer_ECM']
@@ -480,7 +481,25 @@ for plotnum in range(len(ECM_pct)):
             if climnum == 0:
                 plt.ylabel('SAP N limit status (%)')
 
-plt.figure('Monthly Intermediate N', figsize=(6, 8));
+plt.figure('Monthly AM Intermediate N', figsize=(6, 8));
+plt.clf()
+time = numpy.arange(0, 1+timestep, timestep)
+plot_IntN_AM_Monthly = numpy.zeros(1+int(1/timestep))
+for plotnum in range(len(ECM_pct)):
+    for claynum in range(len(clay)):
+        for climnum in range(len(MAT)):
+            ax = plt.subplot(int("1"+str(nclimates)+str(climnum+1)))
+            ax.set_title(str(MAT[climnum])+"°C")
+            for i in numpy.arange(-(1+int(1/timestep)), 0, 1):
+                plot_IntN_AM_Monthly[i + 1+int(1/timestep)] = plot_IntN_AM_all[i, plotnum, claynum, climnum]
+            plt.plot(time, plot_IntN_AM_Monthly[:], ms=4, marker=markers[claynum],
+                     c=cmapECM(normECM(ECM_pct[plotnum])),
+                     label='Clay={claypct:1.1f}%, MAT={mat:1.1f}C'.format(claypct=clay[claynum], mat=MAT[climnum]))
+            plt.xlabel('Time (year)')
+            if climnum == 0:
+                plt.ylabel('Monthly Intermediate N')
+
+plt.figure('Monthly ECM Intermediate N', figsize=(6, 8));
 plt.clf()
 time = numpy.arange(0, 1+timestep, timestep)
 plot_IntN_ECM_Monthly = numpy.zeros(1+int(1/timestep))
