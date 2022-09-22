@@ -61,7 +61,7 @@ params = {
     'frac_N_turnover_min': 0.2,
     'frac_turnover_slow': {'SAP': 0.5, 'ECM': 0.5, 'AM': 0.5},
     'nup': {'Fast': 0.9, 'Slow': 0.6, 'Necro': 0.9},
-    'CN_microbe': {'SAP':8.0,'ECM':14.0,'AM':10.0},
+    'CN_microbe': {'SAP':8.0,'ECM':14.0,'AM':14.0},
     'max_immobilization_rate': 3.65,
     'substrate_diffusion_exp': 1.5,
     'new_resp_units': True,
