@@ -30,8 +30,8 @@ expected_params={	'vmaxref': 'Relative maximum enzymatic decomp rates (length 3)
             'N_deposition': 'Annual nitrogen deposition',
             'kG_simb': 'Half-saturation of intermediate C pool for symbiotic growth (kg C m-2)',
             'rgrowth_simb': 'Maximum growth rate of mycorrhizal fungi',
-            'falloc_base': '# Base allocation of NPP to mycorrhizal fungi'}
-
+            'falloc_base': '# Base allocation of NPP to mycorrhizal fungi',
+            'ratio_ECM_scavenging': 'ratio of ECM inorgN scavenging rate compared to SAP'}
 chem_types = ['Fast','Slow','Necro']
 
 # This sets up three types of microbes: one is free-living saprotrophs, the other two are ECM and AM mycorrhizal fungi
@@ -121,7 +121,12 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,litter
 
     Nacq_simb_max = {'ECM':0.0,'AM':0.0}
     Nmining = NminingRate(SOM,T,theta,params)
-    Nacq_simb_max['ECM'] = sum(Nmining.values())
+    InorgNuptake_ECM = T_factor(T, params, 'InorgN') * \
+                       params['ratio_ECM_scavenging'] * params['max_scavenging_rate']['AM'] \
+                       * SOM['inorganicN'] / (SOM['inorganicN'] + params['kc_scavenging_IN']['AM'] * params['depth']) \
+                       * SOM['ECMC'] / (SOM['ECMC'] + params['kc_scavenging']['SAP'] * params['depth'])
+    Nacq_simb_max['ECM'] = sum(Nmining.values()) + InorgNuptake_ECM
+
     Nacq_simb_max['AM'] = T_factor(T,params,'InorgN') * params['max_scavenging_rate']['AM'] * SOM['inorganicN'] / (
             SOM['inorganicN'] + params['kc_scavenging_IN']['AM'] * params['depth']) \
                           * SOM['AMC'] / (SOM['AMC'] + params['kc_scavenging']['AM'] * params['depth'])
@@ -222,6 +227,7 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,litter
 
     excessN_AM = 0.0
     excessN_ECM = {'Fast':0.0,'Slow':0.0,'Necro':0.0}
+    excessInorgN_ECM = 0.0
 
     if Ndemand_myc['ECM']+Ndemand_myc['AM']>0.0:
         Ndemand_Time_myc['ECM'] = Ndemand_Time*Ndemand_myc['ECM']/(Ndemand_myc['ECM']+Ndemand_myc['AM'])
@@ -240,6 +246,7 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,litter
                 else:
                     for t in chem_types:
                         excessN_ECM[t] += max(0.0, CN_imbalance_term[mt])*Nmining[t+'N']/Nacq_simb_max['ECM']
+                        excessInorgN_ECM = max(0.0, CN_imbalance_term[mt]) * InorgNuptake_ECM / Nacq_simb_max['ECM']
     # If mycorrhizal fungi transfer too much N to plants (N_int pool exceeding 2*Ndemand), then mycorrhizal N acquisition
     # is decreased accordingly. This will not be needed once coupled to a plant growth model.
     Ntransfer = Ntransfer_myc['AM']+Ntransfer_myc['ECM']
@@ -284,9 +291,9 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,litter
     derivs['SAPN']=atleast_1d(dmicrobeN['SAP']) # Will change to "for mt in mic_types" later on for mycorrhizal fungi
     derivs['CO2'] =atleast_1d(CO2prod)
 
-    derivs['inorganicN'] += CN_imbalance_term['SAP']-nitrogen_supply['AM']+excessN_AM\
-                            -SOM['inorganicN']*params['iN_loss_rate'] + params['N_deposition']\
-                            - Nuptake_root_myc['ECM'] - Nuptake_root_myc['AM']
+    derivs['inorganicN'] += CN_imbalance_term['SAP'] - nitrogen_supply['AM'] + excessN_AM \
+                            - SOM['inorganicN'] * params['iN_loss_rate'] + params['N_deposition'] \
+                            - Nuptake_root_myc['ECM'] - Nuptake_root_myc['AM'] + excessInorgN_ECM - InorgNuptake_ECM
     # SAP net N mineralization + AM N scavenging - N loss + N deposition - Root uptake
 
     for t in chem_types:
@@ -325,14 +332,6 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,litter
     derivs['NfromNecro'] = atleast_1d(decomp['NecroN']*params['nup']['Necro'])
     derivs['NfromSOM'] = atleast_1d(nitrogen_supply['SAP'])
     derivs['Nlimit'] = atleast_1d(Nlimit_SAP)
-    derivs['Nlimit'] = atleast_1d(Nuptake_root_myc['AM'] + Ntransfer_myc['AM'] - Ndemand_Time_myc['AM'])
-    # derivs['Nlimit'] = atleast_1d(Ntransfer_myc['AM'] + Ntransfer_myc['ECM']
-    #                               + Nuptake_root_myc['AM'] + Nuptake_root_myc['ECM']
-    #                               - Ndemand_Time_myc['AM'] - Ndemand_Time_myc['ECM'])
-    # derivs['Nlimit'] = atleast_1d(Ntransfer
-    #                               + Nuptake_root_myc['AM'] + Nuptake_root_myc['ECM']
-    #                               - Ndemand_Time_myc['AM'] - Ndemand_Time_myc['ECM'])
-    # derivs['Nlimit'] = atleast_1d(Ntransfer - Ntransfer_myc['ECM'] - Ntransfer_myc['AM'])
 
     derivs['Ntransfer'] = atleast_1d(Ntransfer)
     derivs['Ntransfer_ECM'] = atleast_1d(Ntransfer_myc['ECM'])
@@ -424,3 +423,5 @@ def sumCtypes(SOM,prefix,suffix='C'):
             out=out+SOM[prefix+t+suffix]
 
     return out
+
+
