@@ -78,7 +78,7 @@ params = {
     'Ea_inorgN': 37e3,  # (kJ/mol) Activation energy for immobilization of inorganic N from Sulman et al., (2019)
     'Ea_turnover': 20e3, # (kJ/mol) Activation energy for microbial turnover from Wang et al., (2013)
     'depth': 0.10, # 10cm, assumed for now.
-    'iN_loss_rate': 10.0, # Loss rate from inorganic N pool (year-1). >1 since it takes much less than a year for it to be removed
+    'iN_loss_rate': 30.0, # Loss rate from inorganic N pool (year-1). >1 since it takes much less than a year for it to be removed
     'N_deposition': 0.001,  # Annual nitrogen deposition 1.0gN/m2/yr
     'kG_simb': 0.3, # Half-saturation of intermediate C pool for symbiotic growth (kg C m-2)'
     'rgrowth_simb': 0.3, # Maximum growth rate of mycorrhizal fungi (kg C m-2 year-1)
