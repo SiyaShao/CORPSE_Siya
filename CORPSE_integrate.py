@@ -1,5 +1,6 @@
 
 import CORPSE_deriv
+import numpy
 import pandas
 import scipy.stats as stats
 
@@ -28,6 +29,16 @@ def Ttimecoeff(time,T):
     Ttimecoeff = T + Tem_diff/2.0*math.sin(2*math.pi*(timestep+0.7))
     return Ttimecoeff
 
+def newTtimecoeff(time, SoilT_params):
+    timestep = time - int(time)
+    newTtimecoeff = 273.15 + numpy.sin(timestep * SoilT_params[0] + SoilT_params[2]) * SoilT_params[1] + SoilT_params[3]
+    return newTtimecoeff
+
+def SMtimecoeff(time, SoilM_params):
+    timestep = ((time - int(time)) + 1/24.0)*12
+    SMtimecoeff = numpy.sin(timestep * SoilM_params[0] + SoilM_params[2]) * SoilM_params[1] + SoilM_params[3]
+    return SMtimecoeff
+
 def NPPtimecoeff(time):
     from numpy import math
     timestep = time - int(time)
@@ -35,11 +46,18 @@ def NPPtimecoeff(time):
     # Dramatic increase in NPP around April and then decrease after that
     return NPPtimecoeff
 
+def newNPPtimecoeff(time, NPP_params):
+    timestep = time - int(time)
+    newNPPtimecoeff = 12 * NPP_params[0] * numpy.exp(-(timestep - NPP_params[1]) ** 2 / (2 * NPP_params[2] ** 2))
+    # Aggregated on annual level as the model is set to run on annual timesteps.
+    return newNPPtimecoeff
+
 fields=CORPSE_deriv.expected_pools
 
 # This is a function that translates the CORPSE model pools to/from the format that the equation solver expects
 # The solver will call it multiple times and passes it a list of parameters that needs to be converted to a named "dictionary" that CORPSE expects
-def fsolve_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,Croot,totinputs,litter_ECM,litter_AM,totlitter,ECM_pct,runtype):
+def fsolve_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,SoilT_params,SoilM_params,NPP_params,tNPP,
+                   Croot,totinputs,litter_ECM,litter_AM,totlitter,Pine_pct,Oak_pct,ECM_pct,runtype):
     from numpy import asarray,concatenate
 
     # Make an empty dictionary and fill it with the right values
@@ -59,19 +77,25 @@ def fsolve_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,Croot,totin
         Nlitter = Ndemand
 
     if runtype == 'Final':
-        Ndemand_Time = Ndemand * NPPtimecoeff(times)  # Ndemand should follow the NPP and be time-varying
+        # Ndemand_Time = Ndemand * NPPtimecoeff(times)  # Ndemand should follow the NPP and be time-varying
+        Ndemand_Time = Ndemand * newNPPtimecoeff(times, NPP_params)/tNPP
     else:
         Ndemand_Time = Ndemand
 
     if runtype == 'Final':
-        T = Ttimecoeff(times, T)
+        # T = Ttimecoeff(times, T)
+        T = newTtimecoeff(times, SoilT_params)
 
     if runtype == 'Final':
-        totinputs = totinputs * NPPtimecoeff(times)
+        theta = SMtimecoeff(times, SoilM_params)
+
+    if runtype == 'Final':
+        # totinputs = totinputs * NPPtimecoeff(times)
+        totinputs = newNPPtimecoeff(times, NPP_params)
 
     # Call the CORPSE model function that returns the derivative (with time) of each pool
-    deriv=CORPSE_deriv.CORPSE_deriv(SOM_dict,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,litter_ECM,litter_AM,totlitter,ECM_pct,params,
-                                    claymod=CORPSE_deriv.prot_clay(clay)/CORPSE_deriv.prot_clay(20))
+    deriv=CORPSE_deriv.CORPSE_deriv(SOM_dict,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,litter_ECM,litter_AM,totlitter,
+                                    Pine_pct,Oak_pct,ECM_pct,params,claymod=CORPSE_deriv.prot_clay(clay)/CORPSE_deriv.prot_clay(20))
 
     for pool in inputs.keys():
         if runtype == 'Final':
@@ -90,14 +114,17 @@ def fsolve_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,Croot,totin
 # The ordinary differential equation (ODE) integrating function also wants to send the current time to the function it's integrating
 # Our model doesn't have an explicit dependence on time, but we need a separate function that can deal with the extra argument.
 # We just ignore the time argument and pass the rest to the same function we used for the numerical solver
-def ode_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,Croot,totinputs,litter_ECM,litter_AM,totlitter,ECM_pct,runtype):
-    return fsolve_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,Croot,totinputs,litter_ECM,litter_AM,totlitter,ECM_pct,runtype)
+def ode_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,SoilT_params,SoilM_params,NPP_params,tNPP,
+                Croot,totinputs,litter_ECM,litter_AM,totlitter,Pine_pct,Oak_pct,ECM_pct,runtype):
+    return fsolve_wrapper(SOM_list,times,T,theta,Ndemand,inputs,clay,params,SoilT_params,SoilM_params,NPP_params,tNPP,
+                          Croot,totinputs,litter_ECM,litter_AM,totlitter,Pine_pct,Oak_pct,ECM_pct,runtype)
 
 def arrayify_dict(d):
     from numpy import atleast_1d
     return dict(((v,atleast_1d(d[v])) for v in d))
 
-def run_CORPSE_ODE(T,theta,Ndemand,inputs,clay,initvals,params,times,Croot,totinputs,litter_ECM,litter_AM,totlitter,ECM_pct,runtype):
+def run_CORPSE_ODE(T,theta,Ndemand,inputs,clay,initvals,params,SoilT_params,SoilM_params,NPP_params,tNPP,
+                   times,Croot,totinputs,litter_ECM,litter_AM,totlitter,Pine_pct,Oak_pct,ECM_pct,runtype):
     # Use ODE integrator to actually integrate the model. Currently set up for constant temperature, moisture, and inputs
     # import time
     # t0=time.time()
@@ -111,7 +138,8 @@ def run_CORPSE_ODE(T,theta,Ndemand,inputs,clay,initvals,params,times,Croot,totin
 
     # Runs the ODE integrator
     result=odeint(ode_wrapper,ivals,times,
-        args=(T+273.15,theta,Ndemand,inputs,clay,params,Croot,totinputs,litter_ECM,litter_AM,totlitter,ECM_pct,runtype), mxstep = 5000)
+        args=(T+273.15,theta,Ndemand,inputs,clay,params,SoilT_params,SoilM_params,NPP_params,tNPP,
+              Croot,totinputs,litter_ECM,litter_AM,totlitter,Pine_pct,Oak_pct,ECM_pct,runtype), mxstep = 5000)
 
     # Store the output in a pandas DataFrame (similar to R's dataframes)
     if not isinstance(initvals['SAPC'],float) and len(initvals['SAPC'])==2:
@@ -144,11 +172,11 @@ def run_CORPSE_iterator(T,theta,inputs,clay,initvals,params,times):
     SOM_out={}
     for field in initvals.keys():
         SOM_out[field]=zeros((npoints,nrecords))
-        if len(atleast_1d(initvals['uFastC'])) == 1: 
+        if len(atleast_1d(initvals['uFastC'])) == 1:
             SOM[field]=zeros(npoints)+initvals[field]
         else:
             SOM[field]=initvals[field]
-    
+
     SOM['SAPN']=SOM['SAPC']/params['CN_microbe']
     SOM_out['SAPN']=zeros((npoints,nrecords))
 
@@ -196,7 +224,7 @@ def run_CORPSE_iterator(T,theta,inputs,clay,initvals,params,times):
 if __name__ == '__main__':
     # Test simulation
     import numpy
-        
+
     SOM_init={'uFastC':0.1,
         'uSlowC':10.0,
         'uNecroC':0.1,

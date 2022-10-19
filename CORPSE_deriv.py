@@ -84,7 +84,8 @@ def check_params(params):
 
 
 from numpy import zeros,size,where,atleast_1d,zeros_like
-def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,litter_ECM,litter_AM,totlitter,ECM_pct,params,claymod=1.0):
+def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,litter_ECM,litter_AM,totlitter,
+                 Pine_pct,Oak_pct,ECM_pct,params,claymod=1.0):
     '''Calculate rates of change for all CORPSE pools
        T: Temperature (K)
        theta: Soil water content (fraction of saturation)
@@ -120,7 +121,7 @@ def CORPSE_deriv(SOM,T,theta,Nlitter,Ndemand,Ndemand_Time,Croot,totinputs,litter
     # Separate microbial metabolisms among different microbial types
 
     Nacq_simb_max = {'ECM':0.0,'AM':0.0}
-    Nmining = NminingRate(SOM,T,theta,params)
+    Nmining = NminingRate(SOM,T,theta,params,Pine_pct,Oak_pct)
     InorgNuptake_ECM = T_factor(T, params, 'InorgN') * \
                        params['ratio_ECM_scavenging'] * params['max_scavenging_rate']['AM'] \
                        * SOM['inorganicN'] / (SOM['inorganicN'] + params['kc_scavenging_IN']['AM'] * params['depth']) \
@@ -367,7 +368,7 @@ def decompRate(SOM,T,theta,params):
     return decompRate
 
 # N mining rate
-def NminingRate(SOM,T,theta,params):
+def NminingRate(SOM,T,theta,params,Pine_pct,Oak_pct):
 
     # This only really needs to be calculated once
     if params['new_resp_units']:
@@ -381,6 +382,12 @@ def NminingRate(SOM,T,theta,params):
     NminingRate={}
     dodecomp=atleast_1d((sumCtypes(SOM,'u')!=0.0)&(theta!=0.0)&(SOM['SAPC']!=0.0))
     for t in chem_types:
+        if t == 'Fast':
+            params['kc_mining'] = 0.01 * 1.5 * 20
+        elif t == 'Slow':
+            params['kc_mining'] = 0.01 / (Pine_pct * 1.0 + Oak_pct * 1.0 + (1 - Pine_pct - Oak_pct) * 0.1)
+        elif t == 'Necro':
+            params['kc_mining'] = 0.01 / (Pine_pct * 10.0 + Oak_pct * 5.0 + (1 - Pine_pct - Oak_pct) * 0.1)
         if dodecomp.any():
            drate=where(dodecomp,vmax[t]*theta**params['substrate_diffusion_exp']*(SOM['u'+t+'C'])*SOM['ECMC']/(sumCtypes(SOM,'u')*params['kc_mining']+SOM['ECMC'])*(1.0-theta)**params['gas_diffusion_exp']/aerobic_max,0.0)
         NminingRate[t+'N']=where(SOM['u'+t+'C']>0,drate*SOM['u'+t+'N']/SOM['u'+t+'C'],0.0)
@@ -399,7 +406,10 @@ def Vmax(T,params,process):
     if process=='decompo':
        Vmax=dict([(t,params['vmaxref'][t]*exp(-params['Ea'][t]*(1.0/(Rugas*T)-1.0/(Rugas*Tref)))) for t in chem_types]);
     elif process=='Nmining':
-       Vmax=dict([(t,params['max_mining_rate'][t]*exp(-params['Ea'][t]*(1.0/(Rugas*T)-1.0/(Rugas*Tref)))) for t in chem_types])
+       Vmax = dict(
+            [(t, params['vmaxref'][t] * exp(-params['Ea'][t] * (1.0 / (Rugas * T) - 1.0 / (Rugas * Tref)))) for t in
+             chem_types])
+       # Vmax=dict([(t,params['max_mining_rate'][t]*exp(-params['Ea'][t]*(1.0/(Rugas*T)-1.0/(Rugas*Tref)))) for t in chem_types])
 
     return Vmax
 

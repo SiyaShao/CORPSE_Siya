@@ -94,7 +94,7 @@ SOM_init['AMN'] = SOM_init['AMC'] / params['CN_microbe']['AM']
 # ECM gradient plots
 nplots = 5
 nclays = 1
-nclimates = 3
+nclimates = 1
 # Environmental conditions
 # Gradient of mycorrhizal association
 ECM_pct = numpy.linspace(0, 100, nplots)  # Percent ECM basal area
@@ -135,16 +135,60 @@ plottimes = finaltimes
 timesteps = len(finaltimes)  # According to what is set for times in the above lines (numpy.arrange)
 # The ODE solver uses an adaptive timestep but will return these time points
 
+Inputdir = '/Users/f0068s6/Library/CloudStorage/OneDrive-McGillUniversity/Postdoc/Manuscript 2/Datasets/'
+litter_filename = Inputdir + '10 sites_litter.csv'
+envir_filename = Inputdir + '10 sites_envir.csv'
+
+# Read ECM fraction and litter data
+result = pandas.read_csv(litter_filename, index_col=None)
+Siteofplot = result['Site']
+ECMfrac = result['ECM%']
+Pinefrac = result['Pine%'] + result['Eric%']
+Oakfrac = result['Oak+Beech%']
+LitterCN_site = result['Litter_CN']
+Fastfrac_site = result['Labile%']
+nplots = len(ECMfrac)
+
+# Read environmental data
+result = pandas.read_csv(envir_filename, index_col=None)
+Site = result['Site']
+freq_T = result['freq_T']
+amplitude_T = result['amplitude_T']
+phase_T = result['phase_T']
+offset_T = result['offset_T']
+freq_M = result['freq_M']
+amplitude_M = result['amplitude_M']
+phase_M = result['phase_M']
+offset_M = result['offset_M']
+NPP = result['NPP']
+NPP_a = result['NPP_a']
+NPP_x0 = result['NPP_x0']
+NPP_sigma = result['NPP_sigma']
+Ndep = result['Ndep']
+Clay = result['Clay']
 
 # Run the simulations
 def experiment(plotnum,claynum,climnum):
     from CORPSE_deriv import sumCtypes
     print(
-        'Sim {simnum:d} of {totsims:d}. %ECM = {ecmpct:1.1f}, %clay = {claypct:1.1f}, MAT = {mat:1.1f}'.format(
-            simnum=nclimates*nclays*plotnum+nclimates*claynum+climnum+1, totsims=nplots*nclays*nclimates, ecmpct=ECM_pct[plotnum], claypct=clay[claynum],
-            mat=MAT[climnum]))
+        'Sim {simnum:d} of {totsims:d}, Site = {site}, %ECM = {ecmpct:1.1f}, %Pine = {pinepct:1.1f}, %Oak = {oakpct:1.1f}'.format(
+            simnum=nclimates*nclays*plotnum+nclimates*claynum+climnum+1, totsims=nplots*nclays*nclimates, site=Siteofplot[plotnum],
+            ecmpct=ECMfrac[plotnum], pinepct=100*Pinefrac[plotnum], oakpct=100*Oakfrac[plotnum]))
 
-    litter_CN_site = 1.0/(ECM_pct[plotnum]/100/litter_CN_ECM + (1-ECM_pct[plotnum]/100)/litter_CN_AM)
+    Index = numpy.where(Site == Siteofplot[plotnum])[0]
+    # Use the name of site to get correct environmental information
+    SoilT_params = [float(freq_T[Index]), float(amplitude_T[Index]), float(phase_T[Index]), float(offset_T[Index])]
+    meanSoilT = float(offset_T[Index])
+    SoilM_params = [float(freq_M[Index]), float(amplitude_M[Index]), float(phase_M[Index]), float(offset_M[Index])]
+    meanSoilM = float(offset_M[Index])
+    NPP_params = [float(NPP_a[Index]), float(NPP_x0[Index]), float(NPP_sigma[Index])]
+    total_inputs = float(NPP[Index])
+    params['N_deposition'] = float(Ndep[Index]/1000.0)
+    Clay_site = float(Clay[Index])
+
+    # litter information can be directly pinpointed using plotnum
+    fastfrac_site = Fastfrac_site
+    litter_CN_site = LitterCN_site[plotnum]
     inputs = {'uFastC': total_inputs * fastfrac_site,
               'uSlowC': total_inputs * (1 - fastfrac_site),
               'uFastN': total_inputs * fastfrac_site / litter_CN_site,
@@ -155,20 +199,27 @@ def experiment(plotnum,claynum,climnum):
     # Assuming plant N_litter balances plant N_uptake and plant not relying on roots
     # This will not be needed once the model is coupled with a plant model
 
-    result = CORPSE_integrate.run_CORPSE_ODE(T=MAT[climnum], theta=theta, Ndemand=Ndemand,
+    result = CORPSE_integrate.run_CORPSE_ODE(T=meanSoilT, theta=meanSoilM, Ndemand=Ndemand,
                                              inputs=dict([(k, inputs[k][plotnum]) for k in inputs]),
-                                             clay=clay[claynum], initvals=SOM_init, params=params,
+                                             clay=Clay_site, initvals=SOM_init, params=params,
+                                             SoilT_params = SoilT_params, SoilM_params= SoilM_params,
+                                             NPP_params=NPP_params, tNPP = total_inputs,
                                              times=spinuptimes, Croot=Croot[climnum], totinputs=total_inputs,
                                              litter_ECM=litter_CN_ECM, litter_AM=litter_CN_AM, totlitter=total_inputs,
-                                             ECM_pct=ECM_pct[plotnum] / 100, runtype='Spinup')
-    result = CORPSE_integrate.run_CORPSE_ODE(T=MAT[climnum], theta=theta, Ndemand=Ndemand,
+                                             Pine_pct = Pinefrac[plotnum], Oak_pct = Oakfrac[plotnum],
+                                             ECM_pct=ECMfrac[plotnum] / 100, runtype='Spinup')
+    result = CORPSE_integrate.run_CORPSE_ODE(T=meanSoilT, theta=meanSoilM, Ndemand=Ndemand,
                                              inputs=dict([(k, inputs[k][plotnum]) for k in inputs]),
-                                             clay=clay[claynum], initvals=result.iloc[-1], params=params,
+                                             clay=Clay_site, initvals=result.iloc[-1], params=params,
+                                             SoilT_params=SoilT_params, SoilM_params=SoilM_params,
+                                             NPP_params=NPP_params, tNPP = total_inputs,
                                              times=finaltimes, Croot=Croot[climnum], totinputs=total_inputs,
                                              litter_ECM=litter_CN_ECM, litter_AM=litter_CN_AM, totlitter=total_inputs,
-                                             ECM_pct=ECM_pct[plotnum] / 100, runtype='Final')
+                                             Pine_pct = Pinefrac[plotnum], Oak_pct = Oakfrac[plotnum],
+                                             ECM_pct=ECMfrac[plotnum] / 100, runtype='Final')
     for timenum in range(timesteps):
-        filename = str(nclimates*nclays*plotnum+nclimates*claynum + climnum + 1)+'_Monthly_data.txt'
+        Outputdir = '/Users/f0068s6/Library/CloudStorage/OneDrive-McGillUniversity/Postdoc/Manuscript 2/ModelResults/'
+        filename = Outputdir + str(nclimates*nclays*plotnum+nclimates*claynum + climnum + 1)+'_Monthly_data.txt'
         result.to_csv(filename)
 
 from joblib import Parallel, delayed
